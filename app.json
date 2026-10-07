@@ -1,0 +1,44 @@
+{
+  "key": "daftar",
+  "appName": "daftar",
+  "productName": "Talabia",
+  "appId": "sa.riyadh.daftar",
+  "exeName": "Talabia.exe",
+  "shortcutName": "Talabia",
+  "title": "طلبية | Talabia",
+  "wordmark": "Talabia",
+  "windowBg": "#151119",
+  "brandOrder": [
+    "caneles",
+    "chezzz"
+  ],
+  "icon": {
+    "bg": [
+      30,
+      24,
+      34
+    ],
+    "bars": [
+      [
+        201,
+        162,
+        220
+      ],
+      [
+        143,
+        180,
+        217
+      ],
+      [
+        239,
+        233,
+        242
+      ]
+    ]
+  },
+  "installDir": "Talabia",
+  "oldShortcuts": [
+    "دفتر الطلبية",
+    "طلبية - Talabia"
+  ]
+}

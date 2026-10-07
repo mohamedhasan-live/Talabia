@@ -1,0 +1,107 @@
+Backtest — caneles-1 — 2026-10-07T02:09:10.155Z
+Record: 25 days (2026-09-10 → 2026-10-06), 19 products, coverage records: 17
+Leakage check (days ≥ D changed ×10+7, forecast for D unchanged): 2026-09-24 OK / similar-days guard OK, 2026-10-05 OK / similar-days guard OK
+
+=== BASELINE vs BASELINE + SIMILAR DAYS (STRICT rows, same days & products) ===
+settings: {"on":false,"w":{"dow":0.45,"pay":0.25,"month":0.15,"recency":0.15},"minScore":0.55,"k":3,"minNeff":2,"minObs":5,"recencyDays":21}
+rows: 301 · Similar Days active (λ>0): 18 · reasons: {"no-similar-days":139,"too-few-similar-days":144,"used":18}
+Baseline     : n=301 · MAE 0.78 · WAPE 72.8% · Bias 7.7% · actual=0: 187
+Similar Days : n=301 · MAE 0.78 · WAPE 72.8% · Bias 7.9% · actual=0: 187
+better: 10 · worse: 8 · unchanged: 283
+-- per product (MAE change, best → worst)
+  هني بايتس: n=17 · active 1 · MAE 1.91 → 1.88 (-0.03) · better 1 / worse 0
+  دولتشي كراميل: n=17 · active 1 · MAE 0.99 → 0.98 (-0.01) · better 1 / worse 0
+  كيكة الشوكولاتة: n=17 · active 1 · MAE 0.49 → 0.49 (0) · better 1 / worse 0
+  تيراميسو: n=17 · active 1 · MAE 0.28 → 0.28 (0) · better 1 / worse 0
+  تيراميسو كب: n=16 · active 1 · MAE 0.43 → 0.43 (0) · better 1 / worse 0
+  قهوة سعودية: n=17 · active 1 · MAE 0.45 → 0.44 (0) · better 1 / worse 0
+  هني كيك: n=16 · active 1 · MAE 0.1 → 0.1 (0) · better 1 / worse 0
+  ايس بلاك كوفي: n=16 · active 1 · MAE 0.31 → 0.31 (0) · better 1 / worse 0
+  ايسكريم كون: n=17 · active 1 · MAE 0.95 → 0.95 (0) · better 1 / worse 0
+  هاني بودينق: n=16 · active 1 · MAE 0.2 → 0.2 (0) · better 1 / worse 0
+  بلاك كوفي: n=17 · active 1 · MAE 0.5 → 0.5 (+0) · better 0 / worse 1
+  مانجو بودينق: n=17 · active 1 · MAE 0.85 → 0.85 (+0) · better 0 / worse 1
+  مانجو كـيوبز : n=17 · active 1 · MAE 1.32 → 1.33 (+0) · better 0 / worse 1
+  نجوم الليل: n=17 · active 1 · MAE 0.44 → 0.45 (+0) · better 0 / worse 1
+  ايسكريم بايتس: n=17 · active 1 · MAE 0.66 → 0.67 (+0.01) · better 0 / worse 1
+  كتابات: n=16 · active 1 · MAE 0.42 → 0.43 (+0.01) · better 0 / worse 1
+  بايتس اليوم الوطني: n=17 · active 1 · MAE 1.32 → 1.33 (+0.01) · better 0 / worse 1
+  شوكليت بايتس: n=17 · active 1 · MAE 2.21 → 2.22 (+0.01) · better 0 / worse 1
+-- comparison only (not chosen on these days)
+  k=1: MAE 0.78 · WAPE 72.8% · Bias 8.0% · better 10 / worse 8
+  k=5: MAE 0.78 · WAPE 72.8% · Bias 7.9% · better 10 / worse 8
+  minScore=0.45: MAE 0.78 · WAPE 73.5% · Bias 7.3% · better 82 / worse 71
+Missing cells skipped (never counted as zero): 123 · cells with no prior sale (not scored): 19
+
+=== STRICT (covered days only) ===
+ALL: n=301 · MAE 0.78 · WAPE 72.8% · Bias 7.7% · actual=0: 187 · days 17 · products 18
+-- per product (WAPE best → worst)
+  هني بايتس: n=17 · MAE 1.91 · WAPE 33.1% · Bias -8.3% · actual=0: 0
+  شوكليت بايتس: n=17 · MAE 2.21 · WAPE 37.5% · Bias 2.5% · actual=0: 0
+  دولتشي كراميل: n=17 · MAE 0.99 · WAPE 98.8% · Bias 8.4% · actual=0: 7
+  ايسكريم بايتس: n=17 · MAE 0.66 · WAPE 102.1% · Bias 36.7% · actual=0: 8
+  مانجو كـيوبز : n=17 · MAE 1.32 · WAPE 107.1% · Bias 21.7% · actual=0: 6
+  بايتس اليوم الوطني: n=17 · MAE 1.32 · WAPE 118.0% · Bias 19.1% · actual=0: 8
+  نجوم الليل: n=17 · MAE 0.44 · WAPE 126.0% · Bias 23.6% · actual=0: 12
+  مانجو بودينق: n=17 · MAE 0.85 · WAPE 131.5% · Bias 14.2% · actual=0: 11
+  بلاك كوفي: n=17 · MAE 0.5 · WAPE 140.8% · Bias 37.1% · actual=0: 11
+  ايسكريم كون: n=17 · MAE 0.95 · WAPE 146.3% · Bias 32.7% · actual=0: 11
+  هني كيك: n=16 · MAE 0.1 · WAPE 163.8% · Bias -36.2% · actual=0: 15
+  ايس بلاك كوفي: n=16 · MAE 0.31 · WAPE 164.0% · Bias 54.8% · actual=0: 13
+  كتابات: n=16 · MAE 0.42 · WAPE 167.8% · Bias -25.0% · actual=0: 13
+  تيراميسو كب: n=16 · MAE 0.43 · WAPE 172.7% · Bias -7.7% · actual=0: 13
+  تيراميسو: n=17 · MAE 0.28 · WAPE 240.4% · Bias 59.9% · actual=0: 15
+  قهوة سعودية: n=17 · MAE 0.45 · WAPE 252.7% · Bias 67.3% · actual=0: 15
+  كيكة الشوكولاتة: n=17 · MAE 0.49 · WAPE 279.9% · Bias 117.7% · actual=0: 14
+  هاني بودينق: n=16 · MAE 0.2 · WAPE 316.6% · Bias 116.6% · actual=0: 15
+-- by weekday
+  الأحد: n=49 · MAE 0.73 · WAPE 96.9% · Bias 33.9% · actual=0: 34
+  الاثنين: n=54 · MAE 0.7 · WAPE 107.7% · Bias 36.8% · actual=0: 37
+  الثلاثاء: n=54 · MAE 0.59 · WAPE 69.2% · Bias 3.8% · actual=0: 36
+  الأربعاء: n=36 · MAE 0.92 · WAPE 67.4% · Bias -15.2% · actual=0: 20
+  الخميس: n=36 · MAE 1.11 · WAPE 75.3% · Bias 9.9% · actual=0: 19
+  الجمعة: n=36 · MAE 0.83 · WAPE 40.2% · Bias -21.3% · actual=0: 16
+  السبت: n=36 · MAE 0.71 · WAPE 94.4% · Bias 57.5% · actual=0: 25
+-- by month position
+  11–20 (منتصف الشهر): n=13 · MAE 1.09 · WAPE 129.0% · Bias 79.1% · actual=0: 9
+  21–آخره (نهاية الشهر): n=180 · MAE 0.78 · WAPE 79.4% · Bias 18.8% · actual=0: 109
+  1–10 (بداية الشهر): n=108 · MAE 0.73 · WAPE 59.3% · Bias -12.9% · actual=0: 69
+-- by pay band (PAY_CURVE)
+  16–20: n=13 · MAE 1.09 · WAPE 129.0% · Bias 79.1% · actual=0: 9
+  21–24 (قبل الراتب، ركود): n=72 · MAE 1.03 · WAPE 91.4% · Bias 22.0% · actual=0: 37
+  25–26: n=36 · MAE 0.78 · WAPE 60.7% · Bias 2.8% · actual=0: 21
+  27–31 (الراتب): n=72 · MAE 0.53 · WAPE 77.0% · Bias 28.2% · actual=0: 51
+  1–5 (بعد الراتب): n=90 · MAE 0.8 · WAPE 60.7% · Bias -13.3% · actual=0: 56
+  6–10: n=18 · MAE 0.4 · WAPE 48.5% · Bias -10.0% · actual=0: 13
+-- by branch history
+  قبل 14 يوم سجلّ (نمط الأسبوع افتراضي 100%): n=103 · MAE 1 · WAPE 80.8% · Bias 13.5% · actual=0: 54
+  بعد 14 يوم سجلّ (نمط مخلوط): n=198 · MAE 0.66 · WAPE 67.5% · Bias 3.9% · actual=0: 133
+
+=== PROVISIONAL (old days, recorded sales only — BIASED: zero days missing) ===
+ALL: n=32 · MAE 1.44 · WAPE 45.7% · Bias -33.4% · actual=0: 0 · days 7 · products 10
+-- per product (WAPE best → worst)
+  نجوم الليل: n=2 · MAE 0.15 · WAPE 15.4% · Bias -15.4% · actual=0: 0
+  دولتشي كراميل: n=1 · MAE 0.26 · WAPE 26.3% · Bias -26.3% · actual=0: 0
+  تيراميسو: n=1 · MAE 0.26 · WAPE 26.3% · Bias -26.3% · actual=0: 0
+  ايسكريم كون: n=2 · MAE 0.46 · WAPE 30.9% · Bias -9.1% · actual=0: 0
+  بلاك كوفي: n=2 · MAE 0.32 · WAPE 32.2% · Bias 18.3% · actual=0: 0
+  هني بايتس: n=5 · MAE 1.69 · WAPE 35.2% · Bias -35.2% · actual=0: 0
+  مانجو كـيوبز : n=5 · MAE 1.43 · WAPE 47.6% · Bias -47.6% · actual=0: 0
+  ايسكريم بايتس: n=6 · MAE 0.71 · WAPE 47.6% · Bias -10.6% · actual=0: 0
+  شوكليت بايتس: n=7 · MAE 3.23 · WAPE 53.8% · Bias -36.2% · actual=0: 0
+  مانجو بودينق: n=1 · MAE 1.26 · WAPE 63.2% · Bias -63.2% · actual=0: 0
+-- by weekday
+  الأحد: n=3 · MAE 0.63 · WAPE 47.6% · Bias -47.6% · actual=0: 0
+  الاثنين: n=1 · MAE 3.4 · WAPE 68.0% · Bias -68.0% · actual=0: 0
+  الثلاثاء: n=3 · MAE 0.86 · WAPE 51.6% · Bias 7.3% · actual=0: 0
+  الأربعاء: n=4 · MAE 1.3 · WAPE 43.3% · Bias -43.3% · actual=0: 0
+  الخميس: n=4 · MAE 1.99 · WAPE 37.8% · Bias -37.8% · actual=0: 0
+  الجمعة: n=7 · MAE 2.48 · WAPE 52.6% · Bias -41.9% · actual=0: 0
+  السبت: n=10 · MAE 0.77 · WAPE 36.8% · Bias -8.6% · actual=0: 0
+-- by month position
+  11–20 (منتصف الشهر): n=32 · MAE 1.44 · WAPE 45.7% · Bias -33.4% · actual=0: 0
+-- by pay band (PAY_CURVE)
+  11–15: n=7 · MAE 1.13 · WAPE 56.3% · Bias -35.3% · actual=0: 0
+  16–20: n=25 · MAE 1.53 · WAPE 44.0% · Bias -33.1% · actual=0: 0
+-- by branch history
+  قبل 14 يوم سجلّ (نمط الأسبوع افتراضي 100%): n=32 · MAE 1.44 · WAPE 45.7% · Bias -33.4% · actual=0: 0

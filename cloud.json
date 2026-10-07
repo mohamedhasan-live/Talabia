@@ -1,0 +1,7 @@
+{
+  "provider": "supabase",
+  "project": "daftara",
+  "url": "https://nunuomqvppaadsbpakyt.supabase.co",
+  "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51bnVvbXF2cHBhYWRzYnBha3l0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2OTEwNjIsImV4cCI6MjEwNjI2NzA2Mn0.Xq8OIYNHgB2WxjrX_fB9_MyD4IlHu0hqc5zDpuk22zI",
+  "pollSeconds": 60
+}

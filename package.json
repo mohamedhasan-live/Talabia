@@ -1,0 +1,66 @@
+{
+  "name": "daftar",
+  "version": "1.6.1",
+  "description": "Talabia - order planner for dessert brands and their branches",
+  "main": "main.js",
+  "author": "Riyadh branch",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8",
+    "xlsx": "^0.18.5"
+  },
+  "build": {
+    "appId": "sa.talabia.app",
+    "productName": "Talabia",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "store.js",
+      "brand.js",
+      "brands.js",
+      "auth.js",
+      "cloud.json",
+      "cloud.js",
+      "catalog.js",
+      "workspace.js",
+      "app/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon-daftar.ico"
+    },
+    "compression": "normal",
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Talabia",
+      "uninstallDisplayName": "Talabia",
+      "artifactName": "Talabia-Setup-${version}.exe",
+      "installerIcon": "build/icon-daftar.ico",
+      "uninstallerIcon": "build/icon-daftar.ico",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "asar": true,
+    "afterPack": "tools/after-pack.js"
+  }
+}

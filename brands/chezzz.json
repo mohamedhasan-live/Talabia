@@ -1,0 +1,50 @@
+{
+  "key": "chezzz",
+  "appName": "daftar-chezzz",
+  "productName": "CHEZZZ",
+  "appId": "sa.chezzz.daftar",
+  "exeName": "CHEZZZ.exe",
+  "desktopName": "CHEZZZ.exe",
+  "wordmark": "CHEZZZ",
+  "title": "دفتر الطلبية",
+  "branch": "فرع تشيززز",
+  "source": "https://chezzz.order.sa",
+  "note": "أصفر الهوية #F8D000. المظهر الليلي مبنيّ للنظر الطويل: أرضية رماديّة داكنة محايدة (لا سوداء، فالسواد يزيد وهج الأصفر)، ونصّ غير أبيض ناصع، وأصفر مخفَّف الوهج للعناصر الكبيرة مع إبقاء الأصفر الصريح للحدود والبقع الصغيرة. أسطحٌ متدرّجة بخطوات واضحة ليُميَّز الكرت من الخلفية بلا حاجة إلى خطوط حادّة. والتحذير برتقاليّ صريح لئلّا يختلط بالأصفر المميّز.",
+  "defaultTheme": "dark",
+  "iconSource": "brands/logos/chezzz.png",
+  "iconCrop": { "x": 0, "y": 0, "w": 1, "h": 1 },
+  "fontsHref": "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Archivo+Black&family=IBM+Plex+Mono:wght@500;600&display=swap",
+  "mark": {
+    "font": "\"Archivo Black\",\"Segoe UI\",sans-serif",
+    "style": "normal",
+    "weight": "400",
+    "size": "19px",
+    "spacing": "-.01em"
+  },
+  "icon": { "bg": [26, 21, 8], "fg": [248, 208, 0] },
+  "windowBg": "#151119",
+  "light": {
+    "bg": "#F5F1F0", "surface": "#FFFFFF", "surface-2": "#FBF8F8", "surface-3": "#EDE6EA",
+    "ink": "#2A2330", "ink-2": "#584E60", "ink-3": "#6F6478",
+    "line": "#E2D9DE", "line-strong": "#9A8D95",
+    "accent": "#5B2A6B", "accent-ink": "#5B2A6B", "accent-soft": "#F0E6F3", "accent-line": "#C9AED4",
+    "warn": "#A9531B", "warn-soft": "#FBEFE6", "warn-line": "#F0D5C1",
+    "crit": "#A6374A", "crit-soft": "#F9EAEC", "crit-line": "#EDCCD2",
+    "calm": "#31627E", "calm-soft": "#E4EEF4",
+    "on-accent": "#FFFFFF",
+    "shadow": "0 1px 2px rgba(42,35,48,.06), 0 8px 24px -12px rgba(42,35,48,.18)",
+    "shadow-lift": "0 2px 4px rgba(42,35,48,.08), 0 18px 40px -18px rgba(42,35,48,.28)"
+  },
+  "dark": {
+    "bg": "#151119", "surface": "#1D1824", "surface-2": "#231D2B", "surface-3": "#2E2738",
+    "ink": "#EFE9F2", "ink-2": "#B9AEC4", "ink-3": "#968AA2",
+    "line": "#332B3D", "line-strong": "#716580",
+    "accent": "#C9A2DC", "accent-ink": "#D7B8E6", "accent-soft": "#2B2034", "accent-line": "#5A4668",
+    "warn": "#EFA372", "warn-soft": "#3A2418", "warn-line": "#5A3826",
+    "crit": "#E9899A", "crit-soft": "#3A1E25", "crit-line": "#5A2E39",
+    "calm": "#8FB4D9", "calm-soft": "#1C2733",
+    "on-accent": "#1A1220",
+    "shadow": "0 1px 2px rgba(0,0,0,.5), 0 8px 24px -12px rgba(0,0,0,.7)",
+    "shadow-lift": "0 2px 4px rgba(0,0,0,.55), 0 18px 40px -18px rgba(0,0,0,.8)"
+  }
+}
