@@ -139,6 +139,8 @@ const CSP = [
 const docCsp = doc.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="' + CSP + '">');
 fs.mkdirSync(path.join(ROOT, 'app'), { recursive: true });
 fs.writeFileSync(path.join(ROOT, 'app', 'index.html'), docCsp, 'utf8');
+// the print window (its own page, script and preload) ships beside the app's page
+['print.html', 'print.js', 'print-preload.js'].forEach((f) => fs.copyFileSync(path.join(ROOT, 'src', f), path.join(ROOT, 'app', f)));
 console.log('csp    -> ' + hashes.length + ' inline scripts pinned');
 console.log('page   -> app/index.html (' + Math.round(Buffer.byteLength(doc) / 1024) + ' KB)');
 

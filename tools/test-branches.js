@@ -122,6 +122,7 @@ const tok = (c, name) => c.ev(`getComputedStyle(document.documentElement).getPro
   let proc = launch();
   let c = await connect((await target()).webSocketDebuggerUrl);
   await bootWait(c, 'window.S && S.ready && S.branchId');
+  await c.ev('try{localStorage.setItem("talabia.nativeConfirm","1")}catch(e){} 1');   // checks answer the system box
   check('one app, two brands', await c.ev('BRANDS.length') === 2);
   check('app name shown inside', await c.ev('document.getElementById("appName").textContent') === 'Talabia');
   check('workspace has two branches', await c.ev('S.ws.branches.length') === 2);
@@ -239,6 +240,31 @@ const tok = (c, name) => c.ev(`getComputedStyle(document.documentElement).getPro
   check('DISK: folder gone from branches', !fs.existsSync(path.join(PROFILE, 'branches', newId)));
   const trash = fs.existsSync(path.join(PROFILE, 'trash')) ? fs.readdirSync(path.join(PROFILE, 'trash')) : [];
   check('DISK: moved to trash with its data', trash.some(t => t.startsWith(newId) && fs.existsSync(path.join(PROFILE, 'trash', t, 'daftar.json'))), trash.join(','));
+
+  console.log('--- «استنساخ»: settings travel, sales never ---');
+  await c.ev('try{localStorage.setItem("talabia.nativeConfirm","1")}catch(e){} window.confirm=function(){return true}; 1');
+  await c.ev('(function(){ var p=S.products[0]; p.mto=true; p.shelfLife=7; saveProduct(p); S.cfg.orderDays=[1,4]; saveCfg(); flushSave(); return 1 })()'); await sleep(800);
+  const srcDays = JSON.stringify(disk('caneles-1').days), tgtBefore = disk(emptyId);
+  await c.ev('S.tab="branches"; PANES={branches:"clone"}; render(); 1'); await sleep(300);
+  await c.ev(`(function(){ document.getElementById("clFrom").value="caneles-1"; document.getElementById("clTo").value=${JSON.stringify(emptyId)}; document.getElementById("clGo").click(); return 1 })()`);
+  await waitFor(c, `(function(){ try{ return true }catch(e){ return false } })()`, 'x'); await sleep(2000);
+  const cl = disk(emptyId), src0 = disk('caneles-1');
+  check('the products and their settings were copied («يُحضَّر بالطلب», shelf life, order days)', cl.products.length === src0.products.length && cl.products.some(function(p){ return p.name === src0.products[0].name && p.mto === true && p.shelfLife === 7 }) && JSON.stringify(cl.cfg.orderDays) === '[1,4]', JSON.stringify({n:cl.products.length, od:cl.cfg.orderDays}));
+  check('…the target\'s sales, stock and orders are exactly what they were (none copied)', JSON.stringify(cl.days) === JSON.stringify(tgtBefore.days) && JSON.stringify(cl.stock) === JSON.stringify(tgtBefore.stock) && JSON.stringify(cl.orders) === JSON.stringify(tgtBefore.orders) && Object.keys(cl.days).length === 0, JSON.stringify(Object.keys(cl.days)));
+  check('…the source\'s sales are untouched, and it keeps its own name', JSON.stringify(disk('caneles-1').days) === srcDays && cl.cfg.branch !== src0.cfg.branch, cl.cfg.branch);
+  check('cloneGuard refuses anything that would change sales', await c.ev('cloneGuard({days:{"2026-01-01":{}}},{days:{}})===false && cloneGuard({days:{a:1},stock:{}},{days:{a:1},stock:{}})===true'));
+  // «كلّ فروع البراند»: an edit in chezzz-1 reaches its sibling
+  await pick(c, 'chezzz-1');
+  await waitFor(c, 'S.branchId==="chezzz-1" && S.ready', 'chezzz-1');
+  await c.ev('try{localStorage.setItem("talabia.itemScope.v1","brand")}catch(e){} S.tab="items"; S.itemSec="list"; render(); 1'); await sleep(300);
+  check('the products screen offers «هذا الفرع فقط / كلّ فروع CHEZZZ»', await c.ev('document.querySelectorAll(".itScope").length===2 && document.querySelector(".itScope.on").dataset.sc==="brand"'));
+  const pname = await c.ev('(function(){ var p=S.products[0]; p.shelfLife=9; saveProduct(p); return p.name })()');
+  await sleep(2500);
+  const sib = disk(emptyId).products.filter(function(p){ return p.name === pname })[0];
+  check('…an edit made with «كلّ فروع البراند» reaches the brand\'s other branch (settings only)', !!sib && sib.shelfLife === 9 && Object.keys(disk(emptyId).days).length === 0, JSON.stringify(sib));
+  await c.ev('try{localStorage.removeItem("talabia.itemScope.v1")}catch(e){} 1');
+  await pick(c, 'caneles-1');
+  await waitFor(c, 'S.branchId==="caneles-1" && S.ready', 'caneles-1');
 
   console.log('--- wipe touches one branch only ---');
   await click(c, '#tabs button[data-tab="setup"]'); await sleep(300);

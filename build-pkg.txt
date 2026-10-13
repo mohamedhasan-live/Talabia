@@ -1,0 +1,7 @@
+﻿brands -> CANELÉS, CHEZZZ
+csp    -> 3 inline scripts pinned
+page   -> app/index.html (1037 KB)
+main   -> brand.js, brands.js
+icon   -> build/icon-daftar.ico
+setup  -> dist/Talabia-Setup-1.7.93.exe  (72.9 MB)
+copy   -> installer\Talabia-Setup-1.7.93.exe

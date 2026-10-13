@@ -90,7 +90,13 @@ const J = JSON.stringify;
 
 /* ---- driving the screen the way the owner would ---- */
 const ui = {
+  /** the screen is split into sections (like the control panel): open the one the next step works in */
+  async open(cdp, sec) {
+    await cdp.evaluate(`(function(){ if(window.S.recSec!==${J(sec)}){ document.getElementById("recSec_"+${J(sec)}).click() } return 1 })()`);
+    await waitFor(cdp, 'window.S.recSec===' + J(sec) + ' && document.querySelector("#view .cp-panel")', 'section ' + sec);
+  },
   async addItem(cdp, name, unit) {
+    await ui.open(cdp, 'items');
     await cdp.evaluate(`(function(){ document.getElementById("catNewItem").value=${J(name)};
       var u=document.getElementById("catNewUnit"); u.value=${J(unit)}; document.getElementById("catAddItem").click(); return 1 })()`);
     await waitFor(cdp, `window.S.cat.items.some(function(i){return i.name===${J(name)}})`, 'material ' + name);
@@ -98,12 +104,14 @@ const ui = {
   itemId: (cdp, name) => cdp.evaluate(`(window.S.cat.items.filter(function(i){return i.name===${J(name)}})[0]||{}).id`),
   async link(cdp, product, item) {
     const id = await ui.itemId(cdp, item);
+    await ui.open(cdp, 'links');
     await cdp.evaluate(`(function(){ var rows=document.querySelectorAll("#catLinks tbody tr");
       for (var i=0;i<rows.length;i++){ if(rows[i].cells[0].textContent.trim()===${J(product)}){ var s=rows[i].querySelector(".catLink"); s.value=${J(id)}; s.dispatchEvent(new Event("change",{bubbles:true})); return 1 } }
       throw new Error("no link row for ${product}") })()`);
     await sleep(200);
   },
   async addDef(cdp, kind, product) {
+    await ui.open(cdp, kind === 'b' ? 'bundles' : 'recipes');
     const sel = kind === 'b' ? 'catNewBundle' : 'catNewRecipe', btn = kind === 'b' ? 'catAddBundle' : 'catAddRecipe';
     await cdp.evaluate(`(function(){ var s=document.getElementById(${J(sel)});
       for (var i=0;i<s.options.length;i++) if (s.options[i].text===${J(product)}) { s.value=s.options[i].value; break }
@@ -115,6 +123,7 @@ const ui = {
       for (var i=0;i<cs.length;i++) if (cs[i].querySelector("b").textContent===${J(product)}) return cs[i]; return null })()`,
   /** set line i of a definition: ref is "p:<product name>" or "i:<material name>" */
   async setLine(cdp, kind, product, i, ref, qty, unit) {
+    await ui.open(cdp, kind === 'b' ? 'bundles' : 'recipes');
     await cdp.evaluate(`(function(){ var card=${ui.card(kind, product)};
       var n=card.querySelectorAll('tbody tr').length;
       if (n<=${i}) { card.querySelector(".catLineAdd").click() } return 1 })()`);
@@ -143,6 +152,8 @@ const ui = {
   let cdp = await connect((await targets()).webSocketDebuggerUrl);
   await cdp.send('Runtime.enable'); await cdp.send('Page.enable');
   await waitFor(cdp, 'window.S && window.S.ready', 'the app to boot');
+  await cdp.evaluate('try{localStorage.setItem("talabia.nativeConfirm","1")}catch(e){} 1');   // checks answer the system box
+  await cdp.evaluate('orderFoldsSet({mto:true,mat:true,needs:true,market:true,how:true}); 1');   // the order screen's folding sections, all open for the checks
   await cdp.evaluate('document.getElementById("fresh").click()');
   await waitFor(cdp, 'window.S.demo === false', 'an empty branch');
   const branchId = await cdp.evaluate('window.S.branchId');
@@ -156,8 +167,8 @@ const ui = {
 
   console.log('--- the screen ---');
   await cdp.evaluate('document.querySelector(\'#tabs button[data-tab="recipes"]\').click()');
-  await waitFor(cdp, 'window.S.tab==="recipes" && document.getElementById("catItems")', 'the materials screen');
-  check('the screen opens for the open brand', /CANEL/i.test(await cdp.evaluate('document.getElementById("view").innerText')));
+  await waitFor(cdp, 'window.S.tab==="recipes" && document.getElementById("recSecs")', 'the materials screen');
+  check('the screen opens for the open brand', await cdp.evaluate('window.S.catBrand===curBrandKey() && /CANEL/i.test(document.getElementById("wordmark").textContent)'));
   for (const [n, u] of [['قهوة', 'قطعة'], ['صوص', 'جم'], ['كريمة', 'جم'], ['مكسرات', 'جم'], ['بوكس التلة', 'قطعة']]) await ui.addItem(cdp, n, u);
   check('five materials / operational items added', await cdp.evaluate('window.S.cat.items.length') === 5);
   await ui.link(cdp, 'Black Coffee', 'قهوة');
@@ -199,6 +210,7 @@ const ui = {
   console.log('\n--- the analysis screen ---');
   await cdp.evaluate('document.querySelector(\'#tabs button[data-tab="stats"]\').click()');
   await waitFor(cdp, 'document.getElementById("opStats")', 'the operational analysis');
+  await cdp.evaluate("(function(){ var b=document.querySelector('.paneSec[data-s=ops]'); if(b) b.click(); return 1 })()");   // the analysis in sections: open «التحليل التشغيلي»
   const st = await cdp.evaluate('document.getElementById("view").innerText');
   check('the sales analysis is still there', st.indexOf('تحليل كلّ صنف') >= 0 && st.indexOf('الأكثر مبيعاً') >= 0);
   check('the operational analysis shows صوص as 2 كجم', /صوص\s+2 كجم/.test(st), st.slice(st.indexOf('التحليل التشغيلي'), st.indexOf('التحليل التشغيلي') + 400));
@@ -208,21 +220,28 @@ const ui = {
   await cdp.evaluate('document.querySelector(".opRow").click()');
   await waitFor(cdp, 'document.getElementById("opDetail")', 'an item detail');
   check('an item opens with where it came from', await cdp.evaluate('document.getElementById("opDetail").innerText.indexOf("جاء من") >= 0'), rowQ);
+  const daily = JSON.parse(await cdp.evaluate(`JSON.stringify((function(){ var rows=document.querySelectorAll("#opDaily tbody tr");
+    var O=opReport(statRange()), r=O.rows.filter(function(x){return x.item.id===${JSON.stringify(rowQ)}})[0];
+    var sum=r.series.reduce(function(t,x){return t+x.qty},0);
+    return {rows:rows.length, days:r.series.length, sumOk:Math.abs(sum-r.total)<1e-6, first:rows[0]&&rows[0].children[1].textContent, newest:r.series[r.series.length-1].date} })())`));
+  check('the item shows how much went out day by day (newest first), and the days add up to the total', daily.rows === daily.days && daily.sumOk && daily.first === daily.newest, JSON.stringify(daily));
   const qSrc = JSON.parse(await cdp.evaluate(`(function(){ var o=opReport({from:${J(day)},to:${J(day)}}); var r=o.rows.filter(function(x){return x.item.name==="قهوة"})[0];
     return JSON.stringify(r.sources.map(function(s){return s.name+":"+s.amount})) })()`));
   check('قهوة comes from Black Coffee 10, Ice Black Coffee 15 and the offer 20', qSrc.sort().join() === ['Black Coffee:10', 'Ice Black Coffee:15', 'عرض التلة:20'].sort().join(), J(qSrc));
 
   console.log('\n--- changes take effect at once ---');
   await cdp.evaluate('document.querySelector(\'#tabs button[data-tab="recipes"]\').click()');
-  await waitFor(cdp, 'document.getElementById("catRecipes")', 'the recipes');
+  await waitFor(cdp, 'document.getElementById("recSecs")', 'the recipes');
   await ui.setLine(cdp, 'r', 'سينابون كبير', 0, 'i:صوص', 30, 'جم');
   check('editing the recipe recomputes the analysis (صوص 1,500 جم)', await cdp.evaluate(`opReport({from:${J(day)},to:${J(day)}}).rows.filter(function(r){return r.item.name==="صوص"})[0].total`) === 1500);
+  await ui.open(cdp, 'bundles');
   await cdp.evaluate(`(function(){ var c=${ui.card('b', 'عرض التلة')}.querySelector(".catDefOn"); c.checked=false; c.dispatchEvent(new Event("change",{bubbles:true})); return 1 })()`);
   await sleep(300);
   const off = JSON.parse(await cdp.evaluate(`(function(){ var o=opReport({from:${J(day)},to:${J(day)}}); var q=o.rows.filter(function(r){return r.item.name==="قهوة"})[0];
     return JSON.stringify({q:q&&q.total, ul:Object.keys(o.tot.unlinked).map(function(k){return opName(o.ctx,k)+":"+o.tot.unlinked[k].why})}) })()`));
   check('switching the offer off stops breaking it down (قهوة 25)', off.q === 25, J(off));
   check('…and says why it is no longer counted', off.ul.some(x => /عرض التلة:العرض موقوف/.test(x)), J(off.ul));
+  await ui.open(cdp, 'bundles');
   await cdp.evaluate(`(function(){ var c=${ui.card('b', 'عرض التلة')}.querySelector(".catDefOn"); c.checked=true; c.dispatchEvent(new Event("change",{bubbles:true})); return 1 })()`);
   await ui.setLine(cdp, 'r', 'سينابون كبير', 0, 'i:صوص', 40, 'جم');
 
@@ -238,6 +257,7 @@ const ui = {
   check('the loop is stopped and reported, the rest still counts', cyc.cycles.length === 1 && cyc.sauce === 40, J(cyc));
 
   console.log('\n--- a branch overrides the brand recipe ---');
+  await ui.open(cdp, 'recipes');
   await cdp.evaluate('document.getElementById("catScopeBranch").click()');
   await waitFor(cdp, 'window.S.recScope==="branch"', 'branch scope');
   await ui.addDef(cdp, 'r', 'سينابون كبير');
@@ -317,12 +337,14 @@ const ui = {
   cdp = await connect((await targets()).webSocketDebuggerUrl);
   await cdp.send('Runtime.enable'); await cdp.send('Page.enable');   // the delete questions below are answered «yes»
   await waitFor(cdp, 'window.S && window.S.ready && window.S.catBrand==="caneles"', 'the app and its catalogue after a restart');
+  await cdp.evaluate('orderFoldsSet({mto:true,mat:true,needs:true,market:true,how:true}); 1');
   check('RELOAD: the catalogue comes back', await cdp.evaluate('window.S.cat.items.length') === 5 &&
     await cdp.evaluate(`opReport(null).rows.length`) >= 5);
 
   console.log('\n--- free units and many ingredients per recipe ---');
   await cdp.evaluate('document.querySelector(\'#tabs button[data-tab="recipes"]\').click()');
-  await waitFor(cdp, 'document.getElementById("catItems")', 'the materials screen');
+  await waitFor(cdp, 'document.getElementById("recSecs")', 'the materials screen');
+  await ui.open(cdp, 'items');
   check('the unit is a free field with suggestions', await cdp.evaluate('document.getElementById("catNewUnit").tagName==="INPUT" && document.getElementById("catNewUnit").getAttribute("list")==="opUnitList" && document.querySelectorAll("#opUnitList option").length >= 5'));
   await ui.addItem(cdp, 'كوب ورق', '  كوب ');
   check('a unit typed freely is kept, spaces evened out («كوب»)', await cdp.evaluate('window.S.cat.items.filter(function(i){return i.name==="كوب ورق"})[0].unit') === 'كوب');
@@ -393,6 +415,7 @@ const ui = {
   await cdp.evaluate('document.querySelector(\'#tabs button[data-tab="order"]\').click()');
   await waitFor(cdp, 'document.getElementById("opOrder")', 'the materials order');
   check('it is not ordered as a product', await cdp.evaluate('!document.querySelector(\'.row[data-pid="b16"]\') && !!document.getElementById("mtoNote")'));
+  check('«يُحضَّر بالطلب» shows it as a card with what it is made of (its recipe\'s materials)', await cdp.evaluate('(function(){ var c=document.querySelector(".row.mto[data-mto=b16]"); return !!c && c.innerText.indexOf("كور")>=0 && c.innerText.indexOf("صوص بولز")>=0 && !!c.querySelector(".mtoQty") && !!c.querySelector("svg") })()'));
   check('…nor counted in the order footer', !/بولز 16/.test(await cdp.evaluate('document.getElementById("footinner").innerText')) &&
     await cdp.evaluate('orderedProducts().every(function(p){return p.id!=="b16"})'));
   const mo = JSON.parse(await cdp.evaluate(`(function(){
@@ -407,7 +430,25 @@ const ui = {
   check('a 2-day sauce (shorter than the ~3-day window) is capped at what is used before it expires (' + mo.sauce.order + ' جم)', mo.sauce.capBinds && Math.abs(mo.sauce.order - Math.round(mo.capCalc * 100) / 100) < 0.011, JSON.stringify(mo));
   check('the 30-day core is not capped and covers the window with a reserve (' + mo.core.order + ' كور)', !mo.core.capBinds && mo.core.order >= Math.floor(mo.exp * 16) && mo.core.order === Math.ceil(mo.core.target - 1e-9), JSON.stringify(mo.core));
   check('the material expectation = forecast × recipe (core = 16 × product)', Math.abs(mo.core.expected - mo.exp * 16) < 1e-6, JSON.stringify(mo.core));
-  check('the screen shows «مقيّد بالصلاحية» on the sauce', await cdp.evaluate('document.getElementById("opOrderTable").innerText.indexOf("مقيّد بالصلاحية") >= 0'));
+  check('the screen shows «مقيّد بالصلاحية» on the sauce', await cdp.evaluate('document.getElementById("opOrderCards").innerText.indexOf("مقيّد بالصلاحية") >= 0'));
+  // an operational product («قهوة امريكي»): two made-to-order products linked to it are ordered as ONE card with the products
+  await cdp.evaluate(`(function(){ var c=window.S.cat, ps=activeProducts().filter(function(p){return p.id!=="b16"&&p.id!=="cl"}).slice(0,2);
+    c.items.push({id:"coffeeT",name:"قهوة تجربة",unit:"جرام",shelfLife:4,active:true});
+    ps.forEach(function(p){ p.mto=true; c.links[productKey(p)]={item:"coffeeT",factor:101} });
+    window.__coffeeFrom=ps.map(function(p){return p.name}); render(); return 1 })()`);
+  await sleep(300);
+  const cof = JSON.parse(await cdp.evaluate(`JSON.stringify((function(){ var card=document.querySelector('.rows:not(#opOrderCards) .row[data-item="coffeeT"]');
+    return {withProducts:!!card, inMaterials:!!document.querySelector('#opOrderCards .row[data-item="coffeeT"]'), text:card?card.innerText:"", from:window.__coffeeFrom} })())`));
+  check('a linked material is ordered as one card among the products (both its products in it)', cof.withProducts && !cof.inMaterials && cof.from.every(n => cof.text.indexOf(n) >= 0) && /مجمَّع/.test(cof.text), JSON.stringify(cof));
+  // the shop's switch «اعرضها كصنف في الطلبية» on a recipe material (the sauce): it joins the products as one card
+  const swId = await cdp.evaluate('window.S.cat.items.filter(function(i){return i.name==="صوص بولز"})[0].id');
+  await cdp.evaluate(`(function(){ window.S.tab="recipes"; window.S.recSec="items"; render(); var c=document.querySelector('.catItem[data-id="${swId}"][data-f="asProduct"]');
+    c.checked=true; c.dispatchEvent(new Event("change",{bubbles:true})); window.S.tab="order"; render(); return 1 })()`);
+  await sleep(300);
+  check('the switch moves a recipe material to the products as one card', await cdp.evaluate(`!!document.querySelector('.rows:not(#opOrderCards) .row[data-item="${swId}"]') && !document.querySelector('#opOrderCards .row[data-item="${swId}"]')`));
+  check('…and it is saved with the catalogue', await cdp.evaluate(`sanitizeCatalog(JSON.parse(JSON.stringify(window.S.cat)),window.S.catBrand).items.filter(function(i){return i.id==="${swId}"})[0].asProduct===true`));
+  await cdp.evaluate(`(function(){ window.S.cat.items.forEach(function(i){ if(i.id==="${swId}") i.asProduct=false; if(i.id==="coffeeT") i.asProduct=false }); render(); return 1 })()`);
+  check('switched off, the sauce and even the linked coffee go back to «طلبية المواد»', await cdp.evaluate(`!!document.querySelector('#opOrderCards .row[data-item="${swId}"]') && !!document.querySelector('#opOrderCards .row[data-item="coffeeT"]')`));
   check('an unflagged product is ordered exactly as before', await cdp.evaluate('(function(){var d=isOrderDay(today())?today():nextOrderDay(today());return planFor(window.S.products.filter(function(p){return p.id==="cl"})[0],d).suggested})()') === clBefore);
   await cdp.evaluate('document.getElementById("saveOrder").click()');
   await sleep(500);
@@ -420,7 +461,8 @@ const ui = {
 
   console.log('\n--- deleting a material that recipes use ---');
   await cdp.evaluate('document.querySelector(\'#tabs button[data-tab="recipes"]\').click()');
-  await waitFor(cdp, 'document.getElementById("catItems")', 'the materials screen');
+  await waitFor(cdp, 'document.getElementById("recSecs")', 'the materials screen');
+  await ui.open(cdp, 'items');
   const sb = await ui.itemId(cdp, 'صوص بولز');
   // it is also used in a branch's own recipe
   await cdp.evaluate(`(function(){ var k=productKey(window.S.products.filter(function(p){return p.id==="b16"})[0]);
@@ -441,6 +483,66 @@ const ui = {
     await sleep(300);
     return !(await cdp.evaluate(`window.S.cat.items.some(function(i){return i.id===${J(tid)}})`));
   })());
+
+  console.log('\n--- «ماذا يُطلب في كل يوم»: Friday / Sunday / Tuesday, cinnabon cores on Sunday only ---');
+  const sch = JSON.parse(await cdp.evaluate(`JSON.stringify((function(){
+    var keep=JSON.stringify(window.S.cfg);
+    window.S.cfg.orderDays=[0,2,5]; window.S.cfg.dayCfg={}; window.S.cfg.leadDays=1; window.S.cfg.deliveryHour=19; window.S.cfg.itemDays={};
+    var core="coreT"; window.S.cat.items.push({id:"coreT",name:"كور تجربة",unit:"قطعة",shelfLife:30,active:true}); (function(){ var bc=window.S.products.filter(function(p){return p.id==="bc"})[0], k=productKey(bc); window.S.cat.recipes[k]={active:true,lines:[{item:"coreT",qty:16,unit:"قطعة"}]}; var br=(window.S.cat.branches||{})[window.S.branchId]; if(br&&br.recipes) delete br.recipes[k]; delete window.S.cat.links[k] })(); var sauce="coffeeT";
+    var cl=window.S.products.filter(function(p){return p.id==="cl"})[0];
+    // the owner's week: cores main on Sunday only; every product a top-up on Sunday
+    setItemDay("i:"+core,"5","x"); setItemDay("i:"+core,"2","x");
+    activeProducts().forEach(function(p){ setItemDay("p:"+p.id,"0","t") });
+    var on=function(dow){ var d=addDays(today(),1); for(var i=0;i<8&&d.getDay()!==dow;i++) d=addDays(d,1); return d };   // the next such day after today: a day already under way has real sales since its main order
+    var fri=on(5), sun=on(0), tue=on(2);
+    var pf=planFor(cl,fri), ps=planFor(cl,sun), pt=planFor(cl,tue);
+    var plansAt=function(d){ return activeProducts().map(function(p){return {p:p,plan:planFor(p,d)}}) };
+    var moF=opMaterialOrder(plansAt(fri),coverageWindow(fri)), moS=opMaterialOrder(plansAt(sun),coverageWindow(sun));
+    var cfgBack=sanitizeRecord({products:[],cfg:window.S.cfg}).cfg.itemDays;
+    var r={friNext:pf.win.nextOrder.getDay(), friMode:pf.mode, tueNext:pt.win.nextOrder.getDay(),
+      sunMode:ps.mode, sunSuggested:ps.suggested, sunNext:ps.win.nextOrder.getDay(),
+      coreOnFri:!!moF[core], coreOnSun:!!moS[core], coreSunSpan:moS[core]&&moS[core].w.span, coreSunNext:moS[core]&&moS[core].w.nextOrder.getDay(),
+      sauceFriNext:moF[sauce]&&moF[sauce].w.nextOrder.getDay(), saved:!!cfgBack["i:"+core]&&cfgBack["i:"+core]["5"]==="x"};
+    window.__keepCfg=keep; return r })())`));
+  check('Friday: a product covers until Tuesday’s order (its next main order), Tuesday until Friday', sch.friMode === 'm' && sch.friNext === 2 && sch.tueNext === 5, JSON.stringify(sch));
+  check('Sunday: products are a top-up — shown, nothing guessed without a shelf count, main cover untouched', sch.sunMode === 't' && sch.sunSuggested === 0 && sch.sunNext === 2, JSON.stringify(sch));
+  check('cinnabon cores: not on Friday’s order, on Sunday’s for a whole week (to next Sunday)', !sch.coreOnFri && sch.coreOnSun && sch.coreSunNext === 0 && sch.coreSunSpan > 6, JSON.stringify(sch));
+  check('an untouched material still follows every order day (Friday → Sunday)', sch.sauceFriNext === 0, JSON.stringify(sch));
+  check('the schedule is kept with the settings', sch.saved);
+  await cdp.evaluate('window.S.tab="schedule"; render(); 1'); await sleep(300);
+  const tbl = await cdp.evaluate('(function(){var t=document.getElementById("itemDaysTable"); return t?t.querySelectorAll("tbody tr").length+"|"+t.querySelectorAll("thead tr:first-child th").length:"none"})()');
+  check('the settings show «ماذا يُطلب في كل يوم» with a row per product and material and a column per order day', /^\d+\|4$/.test(tbl) && +tbl.split('|')[0] > 3, tbl);
+  // later: Monday replaces Sunday — copy Sunday's column, then drop Sunday
+  const mon = await cdp.evaluate(`(function(){ window.S.cfg.orderDays=[0,1,2,5]; render();
+    var b=document.querySelector('.itemDayBulk[data-d="1"]'); b.value="c0"; b.dispatchEvent(new Event("change",{bubbles:true}));
+    window.S.cfg.orderDays=[1,2,5];
+    var core="coreT";
+    var r=itemMode("i:"+core,1)+itemMode("p:cl",1)+itemMode("i:"+core,5);
+    window.S.cfg=freshCfg(JSON.parse(window.__keepCfg)); render(); return r })()`);
+  check('«انسخ من الأحد» moves the whole Sunday to Monday (cores ordered, products top-up)', mon === 'mtx', mon);
+  // the top-up suggests the real shortfall: what sold beyond the forecast since the last main order (Friday)
+  const tp = JSON.parse(await cdp.evaluate(`JSON.stringify((function(){
+    var keep=JSON.stringify(window.S.cfg), keepDays=JSON.stringify(window.S.days);
+    window.S.cfg.orderDays=[0,2,5]; window.S.cfg.dayCfg={}; window.S.cfg.leadDays=1; window.S.cfg.deliveryHour=19; window.S.cfg.itemDays={}; window.S.cfg.trackStock=false;
+    setItemDay("p:cl","0","t");
+    var cl=window.S.products.filter(function(p){return p.id==="cl"})[0];
+    var sun=today(); for(var i=0;i<8&&sun.getDay()!==0;i++) sun=addDays(sun,1);
+    var fri=addDays(sun,-2), dv=deliveryFor(fri).date;                  // Friday's order lands Saturday evening
+    // Saturday and Sunday sold 3× the forecast
+    var extra=0; for(var d=dv; d<=sun; d=addDays(d,1)){ var k=ymd(d), f=demandFc(cl,d); window.S.days[k]=window.S.days[k]||{date:k,items:{}}; window.S.days[k].items.cl={sold:Math.round(f*3)}; extra+=(Math.round(f*3)-f)*(+d===+dv?deliveryFor(fri).after:1) }
+    var pl=planFor(cl,sun);
+    var r={mode:pl.mode, suggested:pl.suggested, short:pl.topup.short, from:pl.topup.from&&pl.topup.from.getDay(), extra:extra};
+    window.S.days=JSON.parse(keepDays); window.S.cfg=freshCfg(JSON.parse(keep)); return r })())`));
+  check('a top-up day suggests what sold beyond the forecast since Friday (' + tp.suggested + ')', tp.mode === 't' && tp.from === 5 && Math.abs(tp.short - tp.extra) < 1e-6 && tp.suggested >= Math.floor(tp.short) && tp.suggested > 0, JSON.stringify(tp));
+  // «استبدل يوم بيوم»: Sunday → Monday with its arrival, hour and what is ordered on it
+  const sw = JSON.parse(await cdp.evaluate(`JSON.stringify((function(){
+    var keep=JSON.stringify(window.S.cfg);
+    window.S.cfg.orderDays=[0,2,5]; window.S.cfg.dayCfg={"0":{lead:0,hour:10}}; window.S.cfg.itemDays={"i:coreT":{"2":"x","5":"x"},"p:cl":{"0":"t"}};
+    window.S.tab="schedule"; render();
+    document.getElementById("swapFrom").value="0"; document.getElementById("swapTo").value="1"; document.getElementById("swapDay").click();
+    var c=window.S.cfg, r={days:c.orderDays.join(","), dc:JSON.stringify(c.dayCfg), cl:itemMode("p:cl",1), clOld:itemMode("p:cl",0), core:itemMode("i:coreT",1)+itemMode("i:coreT",5)};
+    window.S.cfg=freshCfg(JSON.parse(keep)); render(); return r })())`));
+  check('«استبدل الأحد بالاثنين» moves the day with its arrival, hour and its products', sw.days === '1,2,5' && sw.dc === '{"1":{"lead":0,"hour":10}}' && sw.cl === 't' && sw.core === 'mx', JSON.stringify(sw));
 
   cdp.close(); proc.kill(); await sleep(800);
   check('no uncaught errors in the page', pageErrors.length === 0, pageErrors.join(' | '));

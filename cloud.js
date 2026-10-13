@@ -137,7 +137,7 @@ function makeCloud({ url, key, ws, brands, fetchImpl, onUpdate, log, auth, timeo
         }
         const st = auth.state();
         ws.setAccess({ role: me.role, branches: me.branches || [], email: st.email,
-                       owner: me.owner === true, roleName: me.role_name || null, perms: me.perms || null, name: me.name || null });
+                       owner: me.owner === true, roleName: me.role_name || null, perms: me.perms || null, name: me.name || null, roleId: me.role_id || null });
         await flushLog();
       } catch (e) {
         if (e.status === 404 || e.code === '42P01' || e.code === 'PGRST202' || e.code === 'PGRST205') { state.status = 'setup'; state.error = 'أمر الأمان لم يُشغَّل بعد في Supabase'; }

@@ -90,12 +90,31 @@ const IN_PAGE = `(function(){
   var full=S.days, keys=Object.keys(full).sort(), keepDow=S.dowIndex, keepModel=S.model;
   var rows=[], noHistory=[], skipped={missing:0};
   var mode=function(D){ var c=coverageOf(D); return c&&c.complete?"strict":"provisional" };
+  var one=function(){return 1};
+  var relearnAll=function(){ relearn() };
+  var STRATS={
+    noPay:function(){ window.payFactor=one; relearnAll() },                       // the salary curve switched off
+    noEvent:function(){ window.eventFactor=one; relearnAll() },                   // occasion factors switched off
+    noPayNoEvent:function(){ window.payFactor=one; window.eventFactor=one; relearnAll() },
+    dowCovered:function(past){                                                    // weekday pattern from covered days only
+      var cov={}; Object.keys(past).forEach(function(k){ var c=coverageOf(k); if(c&&c.complete) cov[k]=past[k] });
+      S.days=cov; learnDow(); S.days=past; learnProducts(); learnSimilar();
+    }
+  };
+  // a bounded recent-level trend: the last 7 observations, seasonality taken out, against the learned level (×0.8…×1.25)
+  var trendOn=function(p,dd,base,mo){
+    var obs=[]; Object.keys(S.days).sort().forEach(function(k){ var e=S.days[k].items?S.days[k].items[p.id]:null; if(!hasSold(e)) return;
+      var d=parseYmd(k), seas=S.dowIndex[d.getDay()]*payFactor(d)*eventFactor(d,S.events); if(seas>0) obs.push(demandOf(e)/seas) });
+    if(obs.length<7||!mo.base) return base;
+    return base*clamp(mean(obs.slice(-7))/mo.base,0.8,1.25);
+  };
   try{
     for(var i=0;i<keys.length;i++){
       var D=keys[i], past={};
       for(var j=0;j<i;j++) past[keys[j]]=full[keys[j]];
       S.days=past; relearn();                                   // the real learning, on days before D only
-      var dd=parseYmd(D), m=mode(D), rec=full[D];
+      var dd=parseYmd(D), m=mode(D), rec=full[D], rowsD=[];
+      var mf=typeof marketFactors==="function"?marketFactors(D):null;   // market effects measured on days before D only
       S.products.forEach(function(p){
         var e=rec.items?rec.items[p.id]:null;
         if(!hasSold(e)){ skipped.missing++; return }           // missing data: not an observation, never a zero
@@ -110,7 +129,24 @@ const IN_PAGE = `(function(){
           row.variants={};
           VARIANTS.forEach(function(v){ row.variants[v.name]=similarDays(p,dd,base,v.opt).final });
         }
-        rows.push(row);
+        row.strat={baseline:base, similar:row.sd!=null?row.sd:base, trend:trendOn(p,dd,base,mo)};
+        if(mf){
+          var mk=forecastMarket(p,dd,D,mf); row.strat.market=mk; row.marketOn=Math.abs(mk-base)>1e-12;
+          row.strat.combined=typeof similarDays==="function"?similarDays(p,dd,mk).final:mk;
+        }
+        if(typeof offerDemand==="function"){                // offers → products: forecast and actual of the offers containing p
+          row.offerFc=offerDemand(p,dd);
+          row.offerAct=(offerMap().map[p.id]||[]).reduce(function(t,x){ var oe=rec.items?rec.items[x.offer]:null; return t+(hasSold(oe)?+oe.sold*x.qty:0) },0);
+        }
+        rows.push(row); rowsD.push(row);
+      });
+      // the other strategies: each relearns on the same past with one assumption changed, then puts it back
+      if(rowsD.length) Object.keys(STRATS).forEach(function(name){
+        var keepPay=window.payFactor, keepEv=window.eventFactor;
+        try{
+          STRATS[name](past);
+          rowsD.forEach(function(r){ var p=S.products.filter(function(x){return x.id===r.pid})[0]; r.strat[name]=forecastBase(p,dd) });
+        } finally { window.payFactor=keepPay; window.eventFactor=keepEv }
       });
     }
   } finally { S.days=full; S.dowIndex=keepDow; S.model=keepModel; relearn() }
@@ -174,9 +210,17 @@ function block(title, m) { return title + ': n=' + (m.n || 0) + (m.n ? ' · MAE 
     await cdp.evaluate(`openBranch(${JSON.stringify(BRANCH)}); 1`);
     await waitFor(cdp, `window.S.branchId===${JSON.stringify(BRANCH)} && window.S.ready && !window.S.demo`, 'the branch');
     await sleep(800);
+    try { await waitFor(cdp, 'window.S.catBrand', 'the catalogue', 8000); } catch (e) { /* no catalogue: offers stay empty */ }
 
     const leak = JSON.parse(await cdp.evaluate(LEAK));
     const res = JSON.parse(await cdp.evaluate(IN_PAGE));
+    // the next order with the offer layer off and on (comparison only; the app ships it off)
+    const offerCmp = JSON.parse(await cdp.evaluate(`(function(){ if(typeof OFFER_DEMAND==="undefined") return "null";
+      var d=isOrderDay(today())?today():nextOrderDay(today()), ps=S.products.filter(function(p){return p.active!==false}), keep=OFFER_DEMAND.on;
+      OFFER_DEMAND.on=false; var off=ps.map(function(p){return planFor(p,d).suggested});
+      OFFER_DEMAND.on=true; var on=ps.map(function(p){var pl=planFor(p,d); return {s:pl.suggested, x:pl.offerExpected}});
+      OFFER_DEMAND.on=keep;
+      return JSON.stringify({date:ymd(d), offers:Object.keys(offerMap().offers).length, rows:ps.map(function(p,i){return {product:p.name, isOffer:isOffer(p), off:off[i], on:on[i].s, fromOffers:on[i].x}})}) })()`));
     const sets = { strict: res.rows.filter(r => r.mode === 'strict'), provisional: res.rows.filter(r => r.mode === 'provisional') };
 
     const out = { branch: BRANCH, ranAt: new Date().toISOString(), record: { days: res.days, from: res.from, to: res.to, products: res.products, coverageRecords: res.imports },
@@ -215,6 +259,42 @@ function block(title, m) { return title + ': n=' + (m.n || 0) + (m.n ? ' · MAE 
       return { baseline: b, similar: s, better, worse, unchanged: same };
     };
     const strictRows = res.rows.filter(r => r.mode === 'strict' && r.sd != null);
+    if (offerCmp) {
+      out.offers = offerCmp;
+      const touched = strictRows.filter(r => (r.offerFc || 0) > 0 || (r.offerAct || 0) > 0);
+      L.push('');
+      L.push('=== OFFERS → PRODUCTS (OFFER_DEMAND; comparison only — the app ships it off) ===');
+      L.push('offers defined in the brand catalogue: ' + offerCmp.offers + ' · strict rows with offer demand: ' + touched.length);
+      if (touched.length) {
+        const withAct = touched.map(r => Object.assign({}, r, { actual: r.actual + (r.offerAct || 0) }));
+        L.push(block('  product forecast vs product + offer actual', metrics(withAct)));
+        L.push(block('  + offer demand vs product + offer actual   ', metrics(withAct.map(r => Object.assign({}, r, { forecast: r.forecast + (r.offerFc || 0) })))));
+        out.offers.accuracy = { baseline: metrics(withAct), withOffers: metrics(withAct.map(r => Object.assign({}, r, { forecast: r.forecast + (r.offerFc || 0) }))) };
+      }
+      const changed = offerCmp.rows.filter(r => r.isOffer || r.off !== r.on);
+      L.push('next order ' + offerCmp.date + ': ' + (changed.length ? changed.map(r => r.product + ' ' + r.off + ' → ' + (r.isOffer ? 'not ordered (offer)' : r.on)).join(' · ') : 'no quantity changes (no offer in the catalogue reaches these products)'));
+    }
+    const STRAT_NAMES = { baseline: 'Baseline (current)', similar: '+ Similar Days', trend: '+ bounded trend', noPay: '− salary curve (payday)', noEvent: '− event factor (events)', noPayNoEvent: '− salary − event', dowCovered: 'weekday from covered days',
+      market: '+ Saudi calendar (observed only)', combined: '+ Similar + Saudi calendar' };
+    const stratRows = strictRows.filter(r => r.strat && Object.keys(STRAT_NAMES).every(k => typeof r.strat[k] === 'number'));
+    if (stratRows.length) {
+      const band = r => r.prodObs < 7 ? '1–6 observations' : r.prodObs < 15 ? '7–14 observations' : '15+ observations';
+      out.strategies = {};
+      L.push('');
+      L.push('=== STRATEGIES (STRICT rows, identical days & products; comparison only — nothing is switched on) ===');
+      for (const [k, label] of Object.entries(STRAT_NAMES)) {
+        const list = stratRows.map(r => Object.assign({}, r, { forecast: r.strat[k] }));
+        let better = 0, worse = 0;
+        stratRows.forEach(r => { const d = Math.abs(r.strat[k] - r.actual) - Math.abs(r.strat.baseline - r.actual); if (d < -1e-9) better++; else if (d > 1e-9) worse++; });
+        out.strategies[k] = { label, all: metrics(list), byWeekday: groupBy(list, r => DOW[r.dow]), bySufficiency: groupBy(list, band), perProduct: groupBy(list, r => r.product), better, worse };
+        L.push('  ' + label.padEnd(34) + block('', metrics(list)).replace(/^: /, '') + ' · better ' + better + ' / worse ' + worse);
+      }
+      L.push('coverage: ' + stratRows.length + ' rows, ' + new Set(stratRows.map(r => r.date)).size + ' days, ' + new Set(stratRows.map(r => r.pid)).size + ' products · rows where the Saudi calendar changed the forecast: ' + stratRows.filter(r => r.marketOn).length);
+      L.push('-- by data sufficiency (MAE)');
+      ['1–6 observations', '7–14 observations', '15+ observations'].forEach(b => {
+        L.push('  ' + b + ': ' + Object.keys(STRAT_NAMES).map(k => { const m = out.strategies[k].bySufficiency[b]; return k + ' ' + (m ? num(m.MAE) + ' (n=' + m.n + ')' : '—'); }).join(' · '));
+      });
+    }
     if (strictRows.length) {
       const main = cmpOf(strictRows, 'sd');
       const perP = {};

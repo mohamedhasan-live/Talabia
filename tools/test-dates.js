@@ -140,6 +140,7 @@ async function typeDate(cdp, sel, ymd, leave, noYear) {
   const cdp = await connect((await targets()).webSocketDebuggerUrl);
   await cdp.send('Runtime.enable'); await cdp.send('Page.enable');
   await waitFor(cdp, 'window.S && window.S.ready', 'the app to boot');
+  await cdp.evaluate('try{localStorage.setItem("talabia.nativeConfirm","1")}catch(e){} 1');   // checks answer the system box
   await cdp.evaluate('document.getElementById("adopt").click()');
   await waitFor(cdp, 'window.S.demo === false', 'the sample catalogue');
   const tab = async (t) => {
@@ -202,7 +203,7 @@ async function typeDate(cdp, sel, ymd, leave, noYear) {
   await sleep(300);
 
   console.log('\n--- occasions ---');
-  await tab('setup');
+  await tab('calendar');
   await waitFor(cdp, 'document.querySelector(\'.evIn[data-f="from"]\')', 'an occasion row');
   const evId = await cdp.evaluate('document.querySelector(\'.evIn[data-f="from"]\').dataset.id');
   await field('occasion start', `.evIn[data-id="${evId}"][data-f="from"]`, '2026-11-20',

@@ -92,6 +92,7 @@ async function bootWait(c, expr) {
   const proc = EXE ? spawn(EXE, args, { env }) : spawn(ELECTRON, ['.'].concat(args), { cwd: ROOT, env });
   const c = await connect((await target()).webSocketDebuggerUrl);
   await bootWait(c, 'window.S && S.ready && S.branchId');
+  await c.ev('try{localStorage.setItem("talabia.nativeConfirm","1")}catch(e){} 1');   // checks answer the system box
 
   console.log('--- signed out: nothing reaches the cloud ---');
   await waitFor(c, 'S.cloud && S.cloud.status==="signin"', 'the sign-in state');

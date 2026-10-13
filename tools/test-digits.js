@@ -104,6 +104,7 @@ const SCAN = `(function(){
   const cdp = await connect((await targets()).webSocketDebuggerUrl);
   await cdp.send('Runtime.enable'); await cdp.send('Page.enable');
   await waitFor(cdp, 'window.S && window.S.ready', 'the app to boot');
+  await cdp.evaluate('try{localStorage.setItem("talabia.nativeConfirm","1")}catch(e){} 1');   // checks answer the system box
 
   console.log('--- the locale the native fields draw with ---');
   const loc = JSON.parse(await cdp.evaluate(`JSON.stringify({lang: navigator.language,
@@ -143,7 +144,11 @@ const SCAN = `(function(){
   await cdp.evaluate('document.querySelector(\'.statPeriod[data-p="7"]\').click()');
   await sleep(500);
   await scan('analysis, last 7 days');
-  await tab('setup', 'جدول الطلب');
+  await tab('schedule', 'جدول الطلب');
+  await scan('schedule');
+  await tab('calendar', 'المناسبات');
+  await scan('calendar');
+  await tab('setup', 'التخزين والمزامنة');
   await scan('settings');
   if (await cdp.evaluate('!!document.querySelector(\'#tabs button[data-tab="branches"]\')')) {
     await cdp.evaluate('document.querySelector(\'#tabs button[data-tab="branches"]\').click()');
@@ -168,6 +173,8 @@ const SCAN = `(function(){
 
   console.log('\n--- typing on an Arabic-Indic keyboard ---');
   await tab('order', 'على مخزونك الحالي وحده');
+  // the product cards sit in «طلبية الأصناف», a card that opens with one press
+  await cdp.evaluate("(function(){var p=document.querySelector('.pane[data-s=products]'); if(p&&p.hidden) document.querySelector('.paneSec[data-s=products]').click(); return 1})()"); await sleep(300);
   const pid = await cdp.evaluate('document.querySelector(".qtyIn").dataset.pid');
   await cdp.evaluate('(function(){var el=document.querySelector(".qtyIn"); el.focus(); el.select(); return 1})()');
   await cdp.send('Input.insertText', { text: '٦٧' });

@@ -1,36 +1,56 @@
-Backtest — caneles-1 — 2026-10-07T02:09:10.155Z
+Backtest — caneles-1 — 2026-10-07T05:32:15.837Z
 Record: 25 days (2026-09-10 → 2026-10-06), 19 products, coverage records: 17
 Leakage check (days ≥ D changed ×10+7, forecast for D unchanged): 2026-09-24 OK / similar-days guard OK, 2026-10-05 OK / similar-days guard OK
 
+=== OFFERS → PRODUCTS (OFFER_DEMAND; comparison only — the app ships it off) ===
+offers defined in the brand catalogue: 0 · strict rows with offer demand: 0
+next order 2026-10-07: no quantity changes (no offer in the catalogue reaches these products)
+
+=== STRATEGIES (STRICT rows, identical days & products; comparison only — nothing is switched on) ===
+  Baseline (current)          n=301 · MAE 0.78 · WAPE 72.8% · Bias 7.7% · actual=0: 187 · better 0 / worse 0
+  + Similar Days              n=301 · MAE 0.78 · WAPE 72.8% · Bias 7.7% · actual=0: 187 · better 0 / worse 0
+  + bounded trend             n=301 · MAE 0.78 · WAPE 73.0% · Bias 7.8% · actual=0: 187 · better 107 / worse 111
+  − salary curve (payday)     n=301 · MAE 0.78 · WAPE 73.5% · Bias 1.0% · actual=0: 187 · better 154 / worse 113
+  − event factor (events)     n=301 · MAE 0.78 · WAPE 72.9% · Bias 9.9% · actual=0: 187 · better 96 / worse 163
+  − salary − event            n=301 · MAE 0.77 · WAPE 71.8% · Bias 0.5% · actual=0: 187 · better 152 / worse 115
+  weekday from covered days   n=301 · MAE 0.79 · WAPE 74.5% · Bias 8.0% · actual=0: 187 · better 84 / worse 104
+  + Saudi calendar (observed only)n=301 · MAE 0.78 · WAPE 72.8% · Bias 7.7% · actual=0: 187 · better 0 / worse 0
+  + Similar + Saudi calendar  n=301 · MAE 0.78 · WAPE 72.8% · Bias 7.7% · actual=0: 187 · better 0 / worse 0
+coverage: 301 rows, 17 days, 18 products · rows where the Saudi calendar changed the forecast: 0
+-- by data sufficiency (MAE)
+  1–6 observations: baseline 0.69 (n=77) · similar 0.69 (n=77) · trend 0.69 (n=77) · noPay 0.69 (n=77) · noEvent 0.69 (n=77) · noPayNoEvent 0.68 (n=77) · dowCovered 0.69 (n=77) · market 0.69 (n=77) · combined 0.69 (n=77)
+  7–14 observations: baseline 0.81 (n=143) · similar 0.81 (n=143) · trend 0.78 (n=143) · noPay 0.79 (n=143) · noEvent 0.82 (n=143) · noPayNoEvent 0.76 (n=143) · dowCovered 0.82 (n=143) · market 0.81 (n=143) · combined 0.81 (n=143)
+  15+ observations: baseline 0.8 (n=81) · similar 0.8 (n=81) · trend 0.86 (n=81) · noPay 0.87 (n=81) · noEvent 0.78 (n=81) · noPayNoEvent 0.85 (n=81) · dowCovered 0.86 (n=81) · market 0.8 (n=81) · combined 0.8 (n=81)
+
 === BASELINE vs BASELINE + SIMILAR DAYS (STRICT rows, same days & products) ===
 settings: {"on":false,"w":{"dow":0.45,"pay":0.25,"month":0.15,"recency":0.15},"minScore":0.55,"k":3,"minNeff":2,"minObs":5,"recencyDays":21}
-rows: 301 · Similar Days active (λ>0): 18 · reasons: {"no-similar-days":139,"too-few-similar-days":144,"used":18}
+rows: 301 · Similar Days active (λ>0): 0 · reasons: {"no-similar-days":193,"too-few-similar-days":108}
 Baseline     : n=301 · MAE 0.78 · WAPE 72.8% · Bias 7.7% · actual=0: 187
-Similar Days : n=301 · MAE 0.78 · WAPE 72.8% · Bias 7.9% · actual=0: 187
-better: 10 · worse: 8 · unchanged: 283
+Similar Days : n=301 · MAE 0.78 · WAPE 72.8% · Bias 7.7% · actual=0: 187
+better: 0 · worse: 0 · unchanged: 301
 -- per product (MAE change, best → worst)
-  هني بايتس: n=17 · active 1 · MAE 1.91 → 1.88 (-0.03) · better 1 / worse 0
-  دولتشي كراميل: n=17 · active 1 · MAE 0.99 → 0.98 (-0.01) · better 1 / worse 0
-  كيكة الشوكولاتة: n=17 · active 1 · MAE 0.49 → 0.49 (0) · better 1 / worse 0
-  تيراميسو: n=17 · active 1 · MAE 0.28 → 0.28 (0) · better 1 / worse 0
-  تيراميسو كب: n=16 · active 1 · MAE 0.43 → 0.43 (0) · better 1 / worse 0
-  قهوة سعودية: n=17 · active 1 · MAE 0.45 → 0.44 (0) · better 1 / worse 0
-  هني كيك: n=16 · active 1 · MAE 0.1 → 0.1 (0) · better 1 / worse 0
-  ايس بلاك كوفي: n=16 · active 1 · MAE 0.31 → 0.31 (0) · better 1 / worse 0
-  ايسكريم كون: n=17 · active 1 · MAE 0.95 → 0.95 (0) · better 1 / worse 0
-  هاني بودينق: n=16 · active 1 · MAE 0.2 → 0.2 (0) · better 1 / worse 0
-  بلاك كوفي: n=17 · active 1 · MAE 0.5 → 0.5 (+0) · better 0 / worse 1
-  مانجو بودينق: n=17 · active 1 · MAE 0.85 → 0.85 (+0) · better 0 / worse 1
-  مانجو كـيوبز : n=17 · active 1 · MAE 1.32 → 1.33 (+0) · better 0 / worse 1
-  نجوم الليل: n=17 · active 1 · MAE 0.44 → 0.45 (+0) · better 0 / worse 1
-  ايسكريم بايتس: n=17 · active 1 · MAE 0.66 → 0.67 (+0.01) · better 0 / worse 1
-  كتابات: n=16 · active 1 · MAE 0.42 → 0.43 (+0.01) · better 0 / worse 1
-  بايتس اليوم الوطني: n=17 · active 1 · MAE 1.32 → 1.33 (+0.01) · better 0 / worse 1
-  شوكليت بايتس: n=17 · active 1 · MAE 2.21 → 2.22 (+0.01) · better 0 / worse 1
+  شوكليت بايتس: n=17 · active 0 · MAE 2.21 → 2.21 (0) · better 0 / worse 0
+  هني بايتس: n=17 · active 0 · MAE 1.91 → 1.91 (0) · better 0 / worse 0
+  مانجو كـيوبز : n=17 · active 0 · MAE 1.32 → 1.32 (0) · better 0 / worse 0
+  ايسكريم بايتس: n=17 · active 0 · MAE 0.66 → 0.66 (0) · better 0 / worse 0
+  ايسكريم كون: n=17 · active 0 · MAE 0.95 → 0.95 (0) · better 0 / worse 0
+  دولتشي كراميل: n=17 · active 0 · MAE 0.99 → 0.99 (0) · better 0 / worse 0
+  بايتس اليوم الوطني: n=17 · active 0 · MAE 1.32 → 1.32 (0) · better 0 / worse 0
+  بلاك كوفي: n=17 · active 0 · MAE 0.5 → 0.5 (0) · better 0 / worse 0
+  مانجو بودينق: n=17 · active 0 · MAE 0.85 → 0.85 (0) · better 0 / worse 0
+  نجوم الليل: n=17 · active 0 · MAE 0.44 → 0.44 (0) · better 0 / worse 0
+  كيكة الشوكولاتة: n=17 · active 0 · MAE 0.49 → 0.49 (0) · better 0 / worse 0
+  قهوة سعودية: n=17 · active 0 · MAE 0.45 → 0.45 (0) · better 0 / worse 0
+  تيراميسو: n=17 · active 0 · MAE 0.28 → 0.28 (0) · better 0 / worse 0
+  تيراميسو كب: n=16 · active 0 · MAE 0.43 → 0.43 (0) · better 0 / worse 0
+  هاني بودينق: n=16 · active 0 · MAE 0.2 → 0.2 (0) · better 0 / worse 0
+  ايس بلاك كوفي: n=16 · active 0 · MAE 0.31 → 0.31 (0) · better 0 / worse 0
+  كتابات: n=16 · active 0 · MAE 0.42 → 0.42 (0) · better 0 / worse 0
+  هني كيك: n=16 · active 0 · MAE 0.1 → 0.1 (0) · better 0 / worse 0
 -- comparison only (not chosen on these days)
-  k=1: MAE 0.78 · WAPE 72.8% · Bias 8.0% · better 10 / worse 8
-  k=5: MAE 0.78 · WAPE 72.8% · Bias 7.9% · better 10 / worse 8
-  minScore=0.45: MAE 0.78 · WAPE 73.5% · Bias 7.3% · better 82 / worse 71
+  k=1: MAE 0.78 · WAPE 72.8% · Bias 7.7% · better 0 / worse 0
+  k=5: MAE 0.78 · WAPE 72.8% · Bias 7.7% · better 0 / worse 0
+  minScore=0.45: MAE 0.79 · WAPE 73.8% · Bias 6.7% · better 97 / worse 84
 Missing cells skipped (never counted as zero): 123 · cells with no prior sale (not scored): 19
 
 === STRICT (covered days only) ===

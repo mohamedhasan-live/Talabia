@@ -1,0 +1,194 @@
+{
+ "branch": "chezzz-1",
+ "ranAt": "2026-10-07T05:04:57.322Z",
+ "record": {
+  "days": 0,
+  "products": 20,
+  "coverageRecords": 0
+ },
+ "events": [
+  {
+   "name": "اليوم الوطني السعودي",
+   "from": "2026-09-21",
+   "to": "2026-09-24",
+   "mult": 1.45
+  },
+  {
+   "name": "يوم التأسيس",
+   "from": "2027-02-21",
+   "to": "2027-02-23",
+   "mult": 1.35
+  }
+ ],
+ "leakageCheck": [],
+ "missingCellsSkipped": 0,
+ "noHistory": [],
+ "sets": {
+  "strict": {
+   "summary": {
+    "n": 0
+   },
+   "perProduct": {},
+   "byWeekday": {},
+   "byMonthPosition": {},
+   "byPayBand": {},
+   "byHistory": {}
+  },
+  "provisional": {
+   "summary": {
+    "n": 0
+   },
+   "perProduct": {},
+   "byWeekday": {},
+   "byMonthPosition": {},
+   "byPayBand": {},
+   "byHistory": {}
+  }
+ },
+ "offers": {
+  "date": "2026-10-07",
+  "offers": 2,
+  "rows": [
+   {
+    "product": "سينامون بولز 16",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "عرض تربل كلاسيك 96",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "لمتنا 48",
+    "isOffer": true,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "عرض دبل بولز 96",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "ميني بسبوسة",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "برالين بيكان 16",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "دبل شوكليت 16",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "تيراميسو بولز 16",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "كنافة بولز 16",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "تيراميسو بولز 28",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "سينامون بولز 28",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "قهوة سعودية",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "سينامون رول",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "ايس بلاك كوفي",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "برالين بيكان 28",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "كنافة بولز 28",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "بلاك كوفي",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "كنافة بولز 48",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "سينامون بولز 48",
+    "isOffer": false,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   },
+   {
+    "product": "لمتنا 28",
+    "isOffer": true,
+    "off": 0,
+    "on": 0,
+    "fromOffers": 0
+   }
+  ]
+ }
+}

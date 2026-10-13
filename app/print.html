@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src file: about:; object-src file:">
+<title>طباعة — Talabia</title>
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<style>
+:root{--bg:#151119; --surface:#1f1925; --surface-2:#271f2e; --line:#3a3142; --ink:#f2eef6; --ink-2:#d2c9da; --ink-3:#a79fb0; --accent:#cfa7ea; --accent-ink:#1b1320}
+*{box-sizing:border-box}
+html,body{margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif; overflow:hidden}
+.wrap{height:100%; display:flex; flex-direction:column; opacity:0; transform:translateY(10px) scale(.985); transition:opacity .32s cubic-bezier(.2,.8,.2,1), transform .36s cubic-bezier(.2,.8,.2,1)}
+.wrap.in{opacity:1; transform:none}
+header{display:flex; align-items:center; justify-content:space-between; gap:12px; padding-block:14px 12px}
+header b{font-size:17px} header .sub{font-size:13px; color:var(--ink-3); margin-top:2px}
+.x{width:34px; height:34px; border-radius:10px; border:1px solid var(--line); background:var(--surface-2); color:var(--ink); cursor:pointer; font-size:15px}
+main{flex:1; min-height:0; width:100%; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:26px; padding:18px 28px 20px}
+header{width:100%; padding-inline:28px}
+.hdrLine{border-bottom:1px solid var(--line)}
+.sheet{padding:0}
+.sheetW{min-height:0; display:flex; flex-direction:column}
+.lbl{font-size:12px; font-weight:700; color:var(--ink-3); margin-bottom:8px; display:flex; justify-content:space-between}
+.sheet{flex:1; min-height:0; border-radius:16px; background:#3d3842; border:1px solid var(--line); overflow:hidden; position:relative; direction:ltr}
+.sheet iframe{position:absolute; inset:6px; width:calc(100% - 12px); height:calc(100% - 12px); border:0; background:#3d3842; transition:opacity .25s ease}
+.sheet.gray iframe{filter:grayscale(1)}
+.sheet .wait{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#ddd; font-size:13px; opacity:0; transition:opacity .2s; pointer-events:none}
+.sheet.busy .wait{opacity:1} .sheet.busy iframe{opacity:.35}
+.side{min-height:0; display:flex; flex-direction:column; gap:10px; opacity:0; transform:translateX(12px); transition:opacity .34s .08s cubic-bezier(.2,.8,.2,1), transform .38s .08s cubic-bezier(.2,.8,.2,1)}
+.wrap.in .side{opacity:1; transform:none}
+html[dir=ltr] .side{transform:translateX(-12px)} html[dir=ltr] .wrap.in .side{transform:none}
+.opts{flex:0 1 auto; min-height:0; overflow:auto; display:grid; grid-template-columns:1fr; align-content:start; gap:12px 18px; padding-inline-end:4px}
+.opts > .sep{grid-column:1 / -1}
+.opts{grid-template-columns:1fr!important; background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px}
+@media (min-width:1200px){ .opts{grid-template-columns:repeat(2, minmax(0,1fr))!important; gap:16px 22px!important} .opts > .sep{grid-column:1 / -1} }
+.side > .btn{max-width:560px; width:100%; align-self:flex-start}
+.acts{display:grid; grid-template-columns:1fr 1fr; gap:10px} .acts .btn{max-width:none} .acts #go{grid-column:1 / -1}
+.f{display:flex; flex-direction:column; gap:5px; font-size:12.5px; color:var(--ink-3); font-weight:600}
+select,input[type=number],input[type=text]{height:40px; border-radius:11px; border:1px solid var(--line); background:var(--surface-2); color:var(--ink); padding:0 12px; font:inherit; font-size:14px; font-weight:500; outline:none; transition:border-color .15s; width:100%}
+select:focus,input:focus{border-color:var(--accent)}
+.row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.pr{display:grid; grid-template-columns:1fr 1fr; gap:6px} .pr .f{grid-column:1 / -1}
+.chk{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-2); font-weight:500; cursor:pointer}
+.chk input{width:18px; height:18px; accent-color:var(--accent); margin:0}
+.sep{height:1px; background:var(--line); margin:2px 0}
+.btn{height:44px; border-radius:12px; border:1px solid var(--line); background:var(--surface-2); color:var(--ink); font:inherit; font-size:15px; font-weight:600; cursor:pointer; padding:0 14px; transition:transform .12s cubic-bezier(.2,.8,.2,1), background-color .16s, opacity .16s}
+.btn:active{transform:scale(.97)}
+.btn.sm{height:40px; font-size:13px; padding:0 10px}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.55; cursor:default}
+.status{min-height:20px; font-size:13px; color:var(--ink-2)}
+.hide{display:none!important}
+@media (max-width:860px){ main{grid-template-columns:1fr} }
+@media (min-width:1400px){
+  .opts{gap:14px} .f{font-size:13px} select,input[type=number],input[type=text]{height:44px; font-size:14.5px}
+  .btn{height:48px} .btn.sm{height:44px} header b{font-size:18px}
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+  <div class="hdrLine"><header><div><b data-en="Print">طباعة</b><div class="sub" id="sub"></div></div><button class="x" id="x" type="button" aria-label="إغلاق">✕</button></header></div>
+  <main>
+    <div class="side">
+      <div class="opts">
+        <div class="pr">
+          <label class="f"><span data-en="Printer">الطابعة</span><select id="printer"><option value="">جارٍ تحميل الطابعات…</option></select></label>
+          <button class="btn sm" id="refresh" type="button" title="تحديث قائمة الطابعات" data-en-title="Refresh the printers">↻</button>
+          <button class="btn sm" id="add" type="button" title="إعدادات الطابعات في ويندوز" data-en="+ Add a printer">+ إضافة طابعة</button>
+        </div>
+        <div class="row">
+          <label class="f"><span data-en="Copies">النسخ</span><input type="number" id="copies" min="1" max="99" step="1" value="1"></label>
+          <label class="f"><span data-en="Orientation">الاتجاه</span><select id="orient"><option value="p" data-en="Portrait">عمودي</option><option value="l" data-en="Landscape">أفقي</option></select></label>
+        </div>
+        <label class="chk"><input type="checkbox" id="collate" checked> <span data-en="Collate (1, 2, 3 — 1, 2, 3)">ترتيب النسخ (1، 2، 3 — 1، 2، 3)</span></label>
+        <div class="row">
+          <label class="f"><span data-en="Pages">الصفحات</span><select id="pages"><option value="all" data-en="All pages">كلّ الصفحات</option><option value="some" data-en="Custom">صفحات محدّدة</option></select></label>
+          <label class="f" id="rangeW"><span data-en="Which pages">أيّ صفحات</span><input type="text" id="range" placeholder="مثال: 1-2، 4" data-en-ph="e.g. 1-2, 4" disabled></label>
+        </div>
+        <div class="sep"></div>
+        <div class="row">
+          <label class="f"><span data-en="Paper size">حجم الورق</span><select id="paper"><option>A4</option><option>A5</option><option>A3</option><option>Letter</option><option>Legal</option><option>Tabloid</option></select></label>
+          <label class="f"><span data-en="Colour">الألوان</span><select id="color"><option value="c" data-en="Colour">ملوّن</option><option value="g" data-en="Black and white">أبيض وأسود</option></select></label>
+        </div>
+        <div class="row">
+          <label class="f"><span data-en="Margins">الهوامش</span><select id="margins"><option value="default" data-en="Default">افتراضية</option><option value="printableArea" data-en="Minimum">صغيرة</option><option value="none" data-en="None">بلا هوامش</option></select></label>
+          <label class="f"><span data-en="Scale">الحجم</span><select id="scale"><option value="100">100٪</option><option value="90">90٪</option><option value="80">80٪</option><option value="70">70٪</option><option value="60">60٪</option><option value="50">50٪</option><option value="110">110٪</option><option value="125">125٪</option><option value="150">150٪</option></select></label>
+        </div>
+        <div class="row">
+          <label class="f"><span data-en="Two-sided">الطباعة على الوجهين</span><select id="duplex"><option value="simplex" data-en="One-sided">وجه واحد</option><option value="longEdge" data-en="Flip on long edge">وجهان — الحافة الطويلة</option><option value="shortEdge" data-en="Flip on short edge">وجهان — الحافة القصيرة</option></select></label>
+          <label class="f"><span data-en="Pages per sheet">صفحات في الورقة</span><select id="pps"><option>1</option><option>2</option><option>4</option><option>6</option><option>9</option><option>16</option></select></label>
+        </div>
+        <label class="chk"><input type="checkbox" id="bg" checked> <span data-en="Background graphics">طباعة الخلفيات والألوان</span></label>
+      </div>
+      <div class="status" id="status"></div>
+      <div class="acts">
+      <button class="btn primary" id="go" type="button" data-en="Print">اطبع</button>
+      <button class="btn ghost" id="more" type="button" title="يفتح الورقة في Microsoft Edge بنافذة طباعة فيها معاينة كاملة وكلّ إعدادات ويندوز" data-en="More settings">إعدادات أكثر</button>
+      <button class="btn ghost" id="close" type="button" data-en="Close">إغلاق</button>
+      </div>
+    </div>
+    <div class="sheetW"><div class="lbl"><span data-en="Sheet preview — exactly as it will print">معاينة الورقة — كما ستخرج من الطابعة</span><span id="pinfo"></span></div>
+      <div class="sheet" id="sheet"><iframe id="doc" title="الورقة"></iframe><div class="wait" data-en="Preparing the preview…">جارٍ تجهيز المعاينة…</div></div></div>
+  </main>
+</div>
+<script src="print.js"></script>
+</body>
+</html>

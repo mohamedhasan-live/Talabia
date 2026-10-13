@@ -1,0 +1,14 @@
+Backtest — chezzz-1 — 2026-10-07T05:04:57.322Z
+Record: 0 days (undefined → undefined), 20 products, coverage records: 0
+Leakage check (days ≥ D changed ×10+7, forecast for D unchanged): 
+
+=== OFFERS → PRODUCTS (OFFER_DEMAND; comparison only — the app ships it off) ===
+offers defined in the brand catalogue: 2 · strict rows with offer demand: 0
+next order 2026-10-07: لمتنا 48 0 → not ordered (offer) · لمتنا 28 0 → not ordered (offer)
+Missing cells skipped (never counted as zero): 0 · cells with no prior sale (not scored): 0
+
+=== STRICT (covered days only) ===
+ALL: n=0
+
+=== PROVISIONAL (old days, recorded sales only — BIASED: zero days missing) ===
+ALL: n=0

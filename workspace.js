@@ -94,7 +94,9 @@ function makeWorkspace({ root, brands, legacyRoot }) {
   }
 
   function normalize(w) {
-    const out = { v: 1, branches: [], current: null, sync: w.sync || { provider: null } };
+    const out = { v: 1, branches: [], current: null, sync: w.sync || { provider: null },
+      // «المحذوفات»: deleted branches, with the folder their data was moved to, so they can be put back
+      trash: (Array.isArray(w.trash) ? w.trash : []).filter(t => t && validId(t.id)).slice(0, 200) };
     const seen = new Set();
     (Array.isArray(w.branches) ? w.branches : []).forEach(b => {
       if (!b || !validId(b.id) || seen.has(b.id)) return;
@@ -299,15 +301,49 @@ function makeWorkspace({ root, brands, legacyRoot }) {
       }
       ws.branches = ws.branches.filter(b => b.id !== id);
       if (ws.current === id) {
-        const sameBrand = ws.branches.find(b => b.brand === entry.brand);
-        ws.current = (sameBrand || ws.branches[0]).id;
+        const sameBrand = ws.branches.find(b => b.brand === entry.brand && !b.paused) || ws.branches.find(b => b.brand === entry.brand);
+        ws.current = (sameBrand || ws.branches.find(b => !b.paused) || ws.branches[0]).id;
       }
+      ws.trash = [{ id, brand: entry.brand, name: entry.name, at: now(), folder: movedTo, rev: +entry.rev || 1 }]
+        .concat((ws.trash || []).filter(t => t.id !== id)).slice(0, 200);
       // remembered until the cloud has been told, so the delete reaches other devices
       if (!opts || !opts.fromCloud) {
         ws.sync.deleted = (ws.sync.deleted || []).filter(x => x !== id).concat(id);
       }
       persist();
       return { ok: true, ws: snapshot(), movedTo };
+    },
+
+    /** Put a deleted branch back: its folder returns, it rejoins its brand, and the cloud hears it is alive again. */
+    restore(id) {
+      const t = (ws.trash || []).find(x => x.id === id);
+      if (!t) return { ok: false, error: 'لا يوجد في المحذوفات' };
+      if (find(id)) return { ok: false, error: 'الفرع موجود بالفعل' };
+      if (!brandKeys.includes(t.brand)) return { ok: false, error: 'brand', brand: t.brand };
+      const dst = path.join(branchesDir, id);
+      if (t.folder && fs.existsSync(t.folder) && !fs.existsSync(dst)) {
+        try { fs.mkdirSync(branchesDir, { recursive: true }); fs.renameSync(t.folder, dst); }
+        catch (e) { return { ok: false, error: 'could not move the folder back: ' + e.message }; }
+      }
+      ws.branches.push({ id, brand: t.brand, name: cleanName(t.name, id), createdAt: now(), rev: (+t.rev || 1) + 1, updatedAt: now() });
+      ws.trash = ws.trash.filter(x => x.id !== id);
+      ws.sync.deleted = (ws.sync.deleted || []).filter(x => x !== id);
+      persist();
+      return { ok: true, ws: snapshot() };
+    },
+    trashList() { return (ws.trash || []).slice(); },
+    /** Pause a branch (hidden from the picker, every record kept) or bring it back. */
+    setPaused(id, on) {
+      const entry = find(id);
+      if (!entry) return { ok: false, error: 'unknown branch: ' + id };
+      if (on && !ws.branches.some(b => b.id !== id && !b.paused)) return { ok: false, error: 'لا يُوقف آخر فرع نشط' };
+      if (on) entry.paused = true; else delete entry.paused;
+      if (on && ws.current === id) {
+        const same = ws.branches.find(b => b.brand === entry.brand && !b.paused);
+        ws.current = (same || ws.branches.find(b => !b.paused)).id;
+      }
+      persist();
+      return { ok: true, ws: snapshot() };
     },
 
     /* ---------- what the cloud sync needs ---------- */
@@ -382,7 +418,8 @@ function makeWorkspace({ root, brands, legacyRoot }) {
       }
       const next = a ? { role: a.role === 'admin' ? 'admin' : 'staff', branches: (a.branches || []).filter(validId), email: a.email || null,
                          owner: a.owner === true, roleName: typeof a.roleName === 'string' ? a.roleName.slice(0, 60) : null, perms,
-                         name: typeof a.name === 'string' && a.name.trim() ? a.name.trim().slice(0, 60) : null } : null;
+                         name: typeof a.name === 'string' && a.name.trim() ? a.name.trim().slice(0, 60) : null,
+                         roleId: typeof a.roleId === 'string' && /^[a-z0-9][a-z0-9-]{0,39}$/.test(a.roleId) ? a.roleId : null } : null;
       if (JSON.stringify(next) === JSON.stringify(ws.sync.access || null)) return;
       if (next) ws.sync.access = next; else delete ws.sync.access;
       persist();

@@ -82,6 +82,7 @@ const J = JSON.stringify;
   const cdp = await connect((await target()).webSocketDebuggerUrl);
   await cdp.send('Runtime.enable'); await cdp.send('Page.enable');
   await waitFor(cdp, 'window.S && window.S.ready', 'the app to boot');
+  await cdp.evaluate('try{localStorage.setItem("talabia.nativeConfirm","1")}catch(e){} 1');   // checks answer the system box
   await cdp.evaluate('document.getElementById("adopt").click()');
   await waitFor(cdp, 'window.S.demo === false', 'the sample catalogue');
 

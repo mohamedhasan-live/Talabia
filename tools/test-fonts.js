@@ -119,13 +119,14 @@ async function fontsOnScreen(cdp) {
   const cdp = await connect((await targets()).webSocketDebuggerUrl);
   await cdp.send('Runtime.enable'); await cdp.send('Page.enable'); await cdp.send('DOM.enable'); await cdp.send('CSS.enable'); await cdp.send('Network.enable');
   await waitFor(cdp, 'window.S && window.S.ready', 'the app to boot');
+  await cdp.evaluate('try{localStorage.setItem("talabia.nativeConfirm","1")}catch(e){} 1');   // checks answer the system box
   await cdp.evaluate('document.getElementById("adopt").click()');
   await waitFor(cdp, 'window.S.demo === false', 'the sample catalogue');
   await waitFor(cdp, 'document.fonts.status === "loaded"', 'the fonts');
 
   check('the Arabic font is inside the app (a local file, loaded)', await cdp.evaluate('document.fonts.check("16px \\"IBM Plex Sans Arabic\\"", "حبة")') &&
     await cdp.evaluate('Array.prototype.some.call(document.styleSheets,function(s){return /vendor\\/fonts\\/fonts\\.css$/.test(s.href||"")})'));
-  const tabs = [['order', 'على مخزونك الحالي وحده'], ['entry', 'آخر أربعة عشر يوماً'], ['items', 'متوسّط يومي'], ['recipes', 'المواد والأصناف التشغيلية'], ['stats', 'الأكثر مبيعاً'], ['setup', 'جدول الطلب']];
+  const tabs = [['order', 'على مخزونك الحالي وحده'], ['entry', 'آخر أربعة عشر يوماً'], ['items', 'متوسّط يومي'], ['recipes', 'المواد والأصناف التشغيلية'], ['stats', 'الأكثر مبيعاً'], ['schedule', 'جدول الطلب'], ['calendar', 'المناسبات'], ['setup', 'التخزين والمزامنة']];
   for (const [t, mark] of tabs) {
     await cdp.evaluate(`document.querySelector('#tabs button[data-tab="${t}"]').click(); 1`);
     await waitFor(cdp, `window.S.tab==="${t}" && document.getElementById("view").innerText.indexOf(${JSON.stringify(mark)})>=0`, 'the ' + t + ' screen');
@@ -137,7 +138,7 @@ async function fontsOnScreen(cdp) {
   await cdp.evaluate('document.querySelector(\'#tabs button[data-tab="entry"]\').click(); 1');
   await waitFor(cdp, 'document.querySelector(".card.good .val")', 'the sold-today card');
   const card = await (async () => {
-    await cdp.evaluate('document.querySelectorAll("[data-fp]").forEach(function(e){e.removeAttribute("data-fp")}); document.querySelector(".card.good .val").setAttribute("data-fp","card"); 1');
+    await cdp.evaluate('document.querySelectorAll("[data-fp]").forEach(function(e){e.removeAttribute("data-fp")}); (document.querySelector(".card.good .val span[dir=rtl] span[dir=rtl]")||document.querySelector(".card.good .val")).setAttribute("data-fp","card"); 1');
     const doc = await cdp.send('DOM.getDocument', { depth: 0 });
     const q = await cdp.send('DOM.querySelector', { nodeId: doc.result.root.nodeId, selector: '[data-fp="card"]' });
     const r = await cdp.send('CSS.getPlatformFontsForNode', { nodeId: q.result.nodeId });

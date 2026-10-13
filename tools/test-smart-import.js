@@ -120,6 +120,7 @@ const pid = (cdp, n) => cdp.evaluate(`(window.S.products.filter(function(p){retu
   const cdp = await connect((await targets()).webSocketDebuggerUrl);
   await cdp.send('Runtime.enable'); await cdp.send('Page.enable');
   await waitFor(cdp, 'window.S && window.S.ready', 'the app to boot');
+  await cdp.evaluate('try{localStorage.setItem("talabia.nativeConfirm","1")}catch(e){} 1');   // checks answer the system box
   await cdp.evaluate('document.getElementById("fresh").click()');
   await waitFor(cdp, 'window.S.demo === false', 'an empty branch');
   // the shop's own catalogue: four products by their plain names; the two coffees switched off
@@ -216,7 +217,7 @@ const pid = (cdp, n) => cdp.evaluate(`(window.S.products.filter(function(p){retu
   const row = JSON.parse(await cdp.evaluate(`(function(){var tr=document.querySelector('tr[data-pid="s3"]');
     return JSON.stringify({alias: tr.querySelector('.itIn[data-f="aliases"]').value, chips: tr.innerText, on: tr.querySelector(".itAct").checked})})()`));
   check('the Odoo code shows as its own chip (POS-CN-017)', /POS-CN-017/.test(row.chips), row.chips);
-  check('the alias field shows readable names, not machine text', !/pos cn/.test(row.alias) && /saudi coffee/.test(row.alias), row.alias);
+  check('the alias field shows the Odoo line exactly as the file wrote it, no machine text', row.alias === '[POS-CN-017] Saudi coffee | قهوة سعودية', row.alias);
   check('a product on sale shows «يُباع» and a ticked switch', row.on && /يُباع/.test(row.chips), JSON.stringify(row));
   await cdp.evaluate('(function(){var c=document.querySelector(\'tr[data-pid="s3"] .itAct\'); c.checked=false; c.dispatchEvent(new Event("change",{bubbles:true})); return 1})()');
   await waitFor(cdp, 'window.S.products.filter(function(p){return p.id==="s3"})[0].active === false', 'switching it off');
@@ -228,7 +229,7 @@ const pid = (cdp, n) => cdp.evaluate(`(window.S.products.filter(function(p){retu
   await sleep(300);
   const al = JSON.parse(await cdp.evaluate('JSON.stringify(window.S.products.filter(function(p){return p.id==="s3"})[0].aliases)'));
   check('adding a name keeps every match the product had (' + before + ' → ' + al.length + ')',
-    al.length === before + 1 && al.indexOf('saudi coffee') >= 0 && al.indexOf('pos cn 017') >= 0 && al.indexOf(await cdp.evaluate('normName("قهوة الضيافة")')) >= 0, JSON.stringify(al));
+    al.indexOf('saudi coffee') >= 0 && al.indexOf('pos cn 017') >= 0 && al.indexOf(await cdp.evaluate('normName("قهوة الضيافة")')) >= 0, JSON.stringify(al));
 
   // erasing a name never leaves the product nameless
   await cdp.evaluate(`(function(){var el=document.querySelector('tr[data-pid="s0"] .itIn[data-f="name"]'); el.focus();

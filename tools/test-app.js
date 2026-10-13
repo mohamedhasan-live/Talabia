@@ -140,6 +140,7 @@ const { killOrphans } = require('./orphans');
   await cdp.send('Page.enable');
 
   await waitFor(cdp, 'window.S && window.S.ready', 'the app to finish booting');
+  await cdp.evaluate('try{localStorage.setItem("talabia.nativeConfirm","1")}catch(e){} 1');   // checks answer the system box
   check('app boots', true);
   check('desktop bridge is present', await cdp.evaluate('!!window.desktop'));
   check('app knows it is on the desktop', await cdp.evaluate('window.S.desktop === true'));
@@ -191,7 +192,7 @@ const { killOrphans } = require('./orphans');
   check('DISK: nine weeks of history written', Object.keys(onDisk.days).length > 60, Object.keys(onDisk.days).length);
 
   // change the schedule to three order days with different arrival times
-  await cdp.evaluate('document.querySelector(\'#tabs button[data-tab="setup"]\').click()');
+  await cdp.evaluate('document.querySelector(\'#tabs button[data-tab="schedule"]\').click()');
   await sleep(600);
   await cdp.evaluate('document.querySelector(\'.dayToggle[data-d="5"]\').click()');
   await sleep(800);
@@ -443,7 +444,10 @@ const { killOrphans } = require('./orphans');
 
   // the screen itself
   const statsUi = JSON.parse(await cdp.evaluate(`(function(){
+    // the analysis is in sections now: read every section, not only the open one
+    var ps=Array.prototype.slice.call(document.querySelectorAll("#view .pane[hidden]")); ps.forEach(function(p){p.hidden=false});
     var v = document.getElementById("view").innerText;
+    ps.forEach(function(p){p.hidden=true});
     return JSON.stringify({
       period: v.indexOf("ملخّص الفترة") >= 0,
       dayAnalysis: v.indexOf("تحليل الأيام") >= 0,
@@ -722,11 +726,11 @@ const { killOrphans } = require('./orphans');
   /* ---------- the shelf-life column on the daily close ---------- */
   await cdp.evaluate('document.querySelector(\'#tabs button[data-tab="entry"]\').click()');
   await sleep(900);
-  const shelfHidden = await cdp.evaluate('document.querySelector("#view table thead").innerText.indexOf("الصلاحية") >= 0');
+  const shelfHidden = await cdp.evaluate('document.querySelector("#view table:not(#entDaysTable) thead").innerText.indexOf("الصلاحية") >= 0');
   check('the shelf-life column is hidden on the daily close by default', !shelfHidden);
   await setToggle(cdp, 'cfgShelfCol', true);
   await cdp.evaluate('document.querySelector(\'#tabs button[data-tab="entry"]\').click()');
-  await waitFor(cdp, 'document.querySelector("#view table thead").innerText.indexOf("الصلاحية") >= 0',
+  await waitFor(cdp, 'document.querySelector("#view table:not(#entDaysTable) thead").innerText.indexOf("الصلاحية") >= 0',
     'the shelf-life column to appear');
   check('switching it on brings it back', true);
   await setToggle(cdp, 'cfgShelfCol', false);
@@ -736,8 +740,9 @@ const { killOrphans } = require('./orphans');
   await cdp.evaluate('document.querySelector(\'#tabs button[data-tab="stats"]\').click()');
   await waitFor(cdp, 'document.querySelectorAll("table td.n").length > 3', 'the analysis tables');
   const align = JSON.parse(await cdp.evaluate(`(function(){
-    // For each table, compare the right edge of a numeric cell's text with the
-    // right edge of its own header — in RTL both must sit on the same line.
+    // For each table, compare the centre of a numeric cell's text with the centre
+    // of its own header — the owner's rule (2026-10-08): every column's content is
+    // centred under its header, on every screen. (It was right edges before.)
     var worst = 0, checked = 0, sample = null;
     document.querySelectorAll("table").forEach(function(t){
       var ths = t.querySelectorAll("thead th");
@@ -755,7 +760,7 @@ const { killOrphans } = require('./orphans');
         var hr = document.createRange(); hr.selectNodeContents(ths[i]);
         var hb = hr.getBoundingClientRect();
         if (!tr.width || !hb.width) continue;
-        var gap = Math.abs(tr.right - hb.right);
+        var gap = Math.abs((tr.left + tr.right) / 2 - (hb.left + hb.right) / 2);
         checked++;
         if (gap > worst) { worst = gap; sample = {header: ths[i].textContent.trim(), value: td.textContent.trim(), gap: Math.round(gap)}; }
       }
@@ -763,9 +768,9 @@ const { killOrphans } = require('./orphans');
     return JSON.stringify({checked: checked, worst: Math.round(worst), sample: sample,
       align: getComputedStyle(document.querySelector("table td.n")).textAlign});
   })()`));
-  check('numeric cells are right-aligned (' + align.align + ')', align.align === 'right', JSON.stringify(align));
+  check('numeric cells are centred under their headers (' + align.align + ')', align.align === 'center', JSON.stringify(align));
   check('every number sits under its own header (checked ' + align.checked + ', worst drift ' + align.worst + 'px)',
-    align.checked > 3 && align.worst <= 24, JSON.stringify(align));
+    align.checked > 3 && align.worst <= 4, JSON.stringify(align));
 
   const cardAlign = await cdp.evaluate(`(function(){
     var v = document.querySelector(".card .val");
@@ -831,7 +836,9 @@ const { killOrphans } = require('./orphans');
     entry: 'آخر أربعة عشر يوماً',
     items: 'متوسّط يومي',
     stats: 'الأكثر مبيعاً',
-    setup: 'جدول الطلب'
+    schedule: 'ماذا يُطلب في كل يوم',
+    calendar: 'المناسبات',
+    setup: 'التخزين والمزامنة'
   };
   for (const tab of Object.keys(marks)) {
     // Wait for the screen to actually be on rather than guessing at a delay —

@@ -46,6 +46,7 @@ set "DAFTAR_EXE=%~dp0dist\win-unpacked\Talabia.exe"
 node tools\test-recipes.js >> "%LOG%" 2>&1
 node tools\test-fonts.js >> "%LOG%" 2>&1
 node tools\test-branches.js >> "%LOG%" 2>&1
+node tools\test-brands.js >> "%LOG%" 2>&1
 node tools\test-import.js >> "%LOG%" 2>&1
 node tools\test-digits.js >> "%LOG%" 2>&1
 node tools\test-dates.js >> "%LOG%" 2>&1
@@ -54,6 +55,11 @@ node tools\test-cloud-app.js >> "%LOG%" 2>&1
 node tools\test-session.js >> "%LOG%" 2>&1
 node tools\test-lang.js >> "%LOG%" 2>&1
 node tools\test-zero-missing.js >> "%LOG%" 2>&1
+node tools\test-similar.js >> "%LOG%" 2>&1
+node tools\test-intel.js >> "%LOG%" 2>&1
+node tools\test-ai.js >> "%LOG%" 2>&1
+node tools\test-market.js >> "%LOG%" 2>&1
+node tools\test-screens.js >> "%LOG%" 2>&1
 set "DAFTAR_EXE="
 echo.
 echo  DONE. Talabia is installed - open it from the Desktop.

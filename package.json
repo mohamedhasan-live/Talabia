@@ -1,6 +1,6 @@
 {
   "name": "daftar",
-  "version": "1.6.1",
+  "version": "1.7.93",
   "description": "Talabia - order planner for dessert brands and their branches",
   "main": "main.js",
   "author": "Riyadh branch",
@@ -31,6 +31,7 @@
       "cloud.json",
       "cloud.js",
       "catalog.js",
+      "ai.js",
       "workspace.js",
       "app/**/*"
     ],
@@ -61,6 +62,14 @@
       "deleteAppDataOnUninstall": false
     },
     "asar": true,
-    "afterPack": "tools/after-pack.js"
+    "afterPack": "tools/after-pack.js",
+    "electronLanguages": [
+      "ar",
+      "en-US",
+      "en-GB"
+    ]
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0"
   }
 }

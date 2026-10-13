@@ -1,0 +1,14 @@
+=== build Fri 10/09/2026 19:06:04.09 === 
+[1/4] close any running copy 
+[2/4] package and install 
+brands -> CANELÉS, CHEZZZ
+csp    -> 2 inline scripts pinned
+page   -> app/index.html (769 KB)
+main   -> brand.js, brands.js
+icon   -> build/icon-daftar.ico
+setup  -> dist/Talabia-Setup-1.7.36.exe  (79.7 MB)
+copy   -> installer\Talabia-Setup-1.7.36.exe
+INSTALL FAILED (exit 1223). If Talabia is open, close it and run build.cmd again.
+The installer is ready: installer\Talabia-Setup-1.7.36.exe
+BUILD FAILED 
+=== done Fri 10/09/2026 19:09:28.43 === 

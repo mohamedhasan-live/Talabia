@@ -84,6 +84,7 @@ async function waitFor(c, expr, label, ms = 25000) {
 
   console.log('--- the owner signs in ---');
   await waitFor(c, 'window.S && S.ready && S.branchId', 'the app to start', 90000);
+  await c.ev('try{localStorage.setItem("talabia.nativeConfirm","1")}catch(e){} 1');   // checks answer the system box
   await signIn('owner@shop.sa', 'S3cure-pass');
   await waitFor(c, 'S.cloud && S.cloud.status==="ok" && document.getElementById("gate").hidden', 'the owner to be in');
   check('the owner sees every screen', await c.ev('Array.prototype.every.call(document.querySelectorAll("#tabs button[data-tab]:not(#tabBranches):not(#tabAdmin)"),function(b){return !b.hidden})'));
@@ -226,6 +227,83 @@ async function waitFor(c, expr, label, ms = 25000) {
   check('the new name reached the cloud', mock.rows().get('chezzz-1').name === 'فرع تشيززز الجديد', mock.rows().get('chezzz-1').name);
   const delB = await c.ev('window.desktop.removeBranch("chezzz-1").then(function(r){return JSON.stringify(r)})');
   check('deleting a branch is still refused', /للمدير فقط/.test(delB) && !mock.rows().get('chezzz-1').deleted, delB);
+
+  console.log('--- delegated control-panel rights: everything the owner allows, nothing over the owner ---');
+  role[1].perms['admin.users'] = true; role[1].perms['admin.roles'] = true; role[1].perms['admin.log'] = true;
+  await c.ev('cloudSyncNow()');
+  await waitFor(c, 'S.cloud.access.perms && S.cloud.access.perms["admin.users"]===true && S.cloud.access.perms["admin.log"]===true', 'the delegated rights');
+  check('the control panel opens for a role given «إدارة المستخدمين»', await c.ev('!document.getElementById("tabAdmin").hidden'));
+  const ul = JSON.parse(await c.ev('window.desktop.admin("users").then(function(r){return JSON.stringify(r)})'));
+  check('…it lists the accounts', ul.ok && ul.data.length >= 2, JSON.stringify(ul).slice(0, 200));
+  const ownerId = ul.data.filter(function(u){ return u.owner })[0].user_id, meId = ul.data.filter(function(u){ return u.me })[0].user_id;
+  const r1 = JSON.parse(await c.ev(`window.desktop.admin("setActive",{user:${JSON.stringify(ownerId)},active:false}).then(function(r){return JSON.stringify(r)})`));
+  const r2 = JSON.parse(await c.ev(`window.desktop.admin("setMember",{user:${JSON.stringify(ownerId)},roleId:null,branches:[]}).then(function(r){return JSON.stringify(r)})`));
+  check('it can never stop or change the owner\'s account', !r1.ok && !r2.ok && mock.member('owner@shop.sa').active !== false, JSON.stringify([r1.error, r2.error]));
+  const r3 = JSON.parse(await c.ev(`window.desktop.admin("setMember",{user:${JSON.stringify(meId)},roleId:null,branches:["chezzz-1","caneles-1"]}).then(function(r){return JSON.stringify(r)})`));
+  const r4 = JSON.parse(await c.ev(`window.desktop.admin("saveRole",{id:${JSON.stringify(role[0])},name:"محرّر",perms:{"view.items":true,"view.order":true}}).then(function(r){return JSON.stringify(r)})`));
+  check('…nor change its own account or its own role (no giving itself rights)', !r3.ok && !r4.ok && mock.member('editor@shop.sa').branches.length >= 1 && role[1].perms['admin.users'] === true, JSON.stringify([r3.error, r4.error]));
+  const r5 = JSON.parse(await c.ev('window.desktop.admin("saveRole",{name:"مصدّر",perms:{"view.items":true,"data.export":true}}).then(function(r){return JSON.stringify(r)})'));
+  const r6 = JSON.parse(await c.ev('window.desktop.admin("saveRole",{name:"مشرف ثانٍ",perms:{"admin.users":true}}).then(function(r){return JSON.stringify(r)})'));
+  check('…nor create a role with anything sensitive (data, the control panel itself)', !r5.ok && !r6.ok, JSON.stringify([r5.error, r6.error]));
+  const r7 = JSON.parse(await c.ev('window.desktop.admin("saveRole",{name:"كاشير",perms:{"view.entry":true,"entry.record":true}}).then(function(r){return JSON.stringify(r)})'));
+  check('…but it creates ordinary roles freely', r7.ok && !!r7.data, JSON.stringify(r7));
+  const r8 = JSON.parse(await c.ev(`window.desktop.admin("createMember",{name:"منى",email:"cash@shop.sa",password:"Cash-pass-99",roleId:${JSON.stringify(role[0])},branches:["chezzz-1"]}).then(function(r){return JSON.stringify(r)})`));
+  const r9 = JSON.parse(await c.ev(`window.desktop.admin("createMember",{name:"منى",email:"cash@shop.sa",password:"Cash-pass-99",roleId:${JSON.stringify(r7.data)},branches:["chezzz-1"]}).then(function(r){return JSON.stringify(r)})`));
+  check('…and accounts with them — never with a sensitive role', !r8.ok && r9.ok && mock.member('cash@shop.sa') && mock.member('cash@shop.sa').roleId === r7.data, JSON.stringify([r8.error, r9.ok]));
+  const r10 = JSON.parse(await c.ev('window.desktop.admin("activity",{limit:20}).then(function(r){return JSON.stringify({ok:r.ok})})'));
+  const r11 = JSON.parse(await c.ev('window.desktop.admin("clearActivity").then(function(r){return JSON.stringify(r)})'));
+  check('the log: it may read it, never clear it', r10.ok && !r11.ok, JSON.stringify([r10, r11.error]));
+  await c.ev('S.tab="admin"; CP.loaded=false; cpLoad(); 1'); await sleep(1200);
+  await c.ev('CP.sec="roles"; CP.edit={perms:{}}; render(); 1'); await sleep(300);
+  check('on screen: the sensitive rights are locked in the role editor, and there is no «مسح السجلّ»', await c.ev('document.querySelector(\'.cpPerm[value="data.export"]\').disabled && document.querySelector(\'.cpPerm[value="usr.view"]\').disabled && document.querySelector(\'.cpPerm[value="role.edit"]\').disabled && !document.querySelector(\'.cpPerm[value="items.edit"]\').disabled') && await c.ev('CP.edit=null; CP.sec="log"; render(); !document.getElementById("cpActClear")'));
+  check('…and the owner\'s row and its own row have no «تعديل»', await c.ev(`CP.sec="users"; render(); !document.querySelector('.cpOpen[data-u=${JSON.stringify(ownerId)}]') && !document.querySelector('.cpOpen[data-u=${JSON.stringify(meId)}]')`));
+
+  console.log('--- the owner\'s roles and accounts are the delegate\'s to manage — the sensitive rights stay as the owner set them ---');
+  mock.roles().set('mgr-owner', { name: 'مدير فرع (من المالك)', perms: { 'view.order': true, 'view.items': true, 'data.export': true } });
+  const e1 = JSON.parse(await c.ev('window.desktop.admin("saveRole",{id:"mgr-owner",name:"مدير فرع (من المالك)",perms:{"view.order":true,"view.items":true,"view.stats":true,"data.export":true}}).then(function(r){return JSON.stringify(r)})'));
+  check('a role the owner made (with «تصدير نسخة») can be edited by the delegate…', e1.ok && mock.roles().get('mgr-owner').perms['view.stats'] === true, JSON.stringify(e1));
+  const e2 = JSON.parse(await c.ev('window.desktop.admin("saveRole",{id:"mgr-owner",name:"مدير فرع (من المالك)",perms:{"view.order":true,"view.items":true}}).then(function(r){return JSON.stringify(r)})'));
+  const e3 = JSON.parse(await c.ev('window.desktop.admin("saveRole",{id:"mgr-owner",name:"مدير فرع (من المالك)",perms:{"view.order":true,"data.export":true,"data.import":true}}).then(function(r){return JSON.stringify(r)})'));
+  check('…but its sensitive rights cannot be removed or added', !e2.ok && !e3.ok && mock.roles().get('mgr-owner').perms['data.export'] === true && !mock.roles().get('mgr-owner').perms['data.import'], JSON.stringify([e2.error, e3.error]));
+  const cashId0 = (JSON.parse(await c.ev('window.desktop.admin("users").then(function(r){return JSON.stringify(r)})')).data.filter(function(u){ return u.email === 'cash@shop.sa' })[0] || {}).user_id;
+  mock.member('cash@shop.sa').roleId = 'mgr-owner';
+  const e4 = JSON.parse(await c.ev(`window.desktop.admin("setMember",{user:${JSON.stringify(cashId0)},name:"منى علي",roleId:"mgr-owner",branches:["chezzz-1"]}).then(function(r){return JSON.stringify(r)})`));
+  check('an account the owner gave such a role is still the delegate\'s to edit (name, branches), keeping its role', e4.ok && mock.member('cash@shop.sa').name === 'منى علي', JSON.stringify(e4));
+  await c.ev('S.tab="admin"; CP.loaded=false; cpLoad(); 1'); await sleep(1200);
+  await c.ev('CP.sec="roles"; render(); 1'); await sleep(200);
+  check('on screen: «تعديل الصلاحيات» on the owner\'s role, none on the delegate\'s own', await c.ev(`!!document.querySelector('.cpRoleEdit[data-r="mgr-owner"]') && !document.querySelector('.cpRoleEdit[data-r=${JSON.stringify(role[0])}]')`));
+
+  console.log('--- the control-panel rights, part by part ---');
+  await c.ev('S.tab="admin"; CP.sec=null; render(); 1'); await sleep(200);
+  await c.ev('document.getElementById("cpSec_roles").click(); 1'); await sleep(300);
+  check('a delegated account opens the panel\'s sections by pressing them', await c.ev('CP.sec==="roles" && !!document.querySelector(".cp-panel")'));
+  ['admin.users', 'admin.roles', 'admin.log'].forEach(function(k){ delete role[1].perms[k] });
+  role[1].perms['usr.view'] = true; role[1].perms['usr.stop'] = true; role[1].perms['log.view'] = true;
+  await c.ev('cloudSyncNow()');
+  await waitFor(c, 'S.cloud.access.perms && S.cloud.access.perms["usr.stop"]===true && !S.cloud.access.perms["admin.users"]', 'the parts');
+  const g1 = JSON.parse(await c.ev('window.desktop.admin("users").then(function(r){return JSON.stringify({ok:r.ok})})'));
+  const cash = mock.member('cash@shop.sa');
+  const cashId = (JSON.parse(await c.ev('window.desktop.admin("users").then(function(r){return JSON.stringify(r)})')).data.filter(function(u){ return u.email === 'cash@shop.sa' })[0] || {}).user_id;
+  const g2 = JSON.parse(await c.ev(`window.desktop.admin("setActive",{user:${JSON.stringify(cashId)},active:false}).then(function(r){return JSON.stringify(r)})`));
+  const g3 = JSON.parse(await c.ev(`window.desktop.admin("setMember",{user:${JSON.stringify(cashId)},roleId:null,branches:[]}).then(function(r){return JSON.stringify(r)})`));
+  const g4 = JSON.parse(await c.ev('window.desktop.admin("saveRole",{name:"دور ممنوع",perms:{"view.items":true}}).then(function(r){return JSON.stringify(r)})'));
+  const g5 = JSON.parse(await c.ev(`window.desktop.admin("password",{user:${JSON.stringify(cashId)},password:"Other-pass-77"}).then(function(r){return JSON.stringify(r)})`));
+  check('each part works alone: «عرض» and «إيقاف وتفعيل» given — so it lists and stops accounts…', g1.ok && g2.ok && mock.member('cash@shop.sa').active === false, JSON.stringify([g1, g2]));
+  check('…but cannot edit an account, change a password or create a role (not given)', !g3.ok && !g5.ok && !g4.ok, JSON.stringify([g3.error, g5.error, g4.error]));
+  await c.ev('S.tab="admin"; CP.loaded=false; cpLoad(); 1'); await sleep(1200);
+  await c.ev('CP.sec="users"; render(); 1'); await sleep(200);
+  check('on screen: no «+ إضافة مستخدم» and no roles section without their parts', await c.ev('!document.getElementById("cpAdd") && !document.getElementById("cpSec_roles") && !!document.getElementById("cpSec_log")'));
+
+  console.log('--- the settings, section by section ---');
+  await c.ev('S.tab="setup"; render(); 1'); await sleep(200);
+  const st0 = await c.ev('["theme","ui","market","general"].filter(function(k){ return !!document.querySelector(".paneSec[data-g=setup][data-s="+k+"]") }).join()');
+  check('without their rights, no «المظهر والألوان», «تخصيص الواجهة», «السوق والدولة» or «عام»', st0 === '', st0);
+  role[1].perms['setup.look'] = true; role[1].perms['setup.ui'] = true;
+  await c.ev('cloudSyncNow()');
+  await waitFor(c, 'S.cloud.access.perms && S.cloud.access.perms["setup.look"]===true', 'the settings rights');
+  await c.ev('S.tab="setup"; render(); 1'); await sleep(200);
+  const st1 = await c.ev('["theme","ui","market","general"].filter(function(k){ return !!document.querySelector(".paneSec[data-g=setup][data-s="+k+"]") }).join()');
+  check('…given «المظهر والألوان» and «تخصيص الواجهة», exactly those appear', st1 === 'ui,theme' || st1 === 'theme,ui', st1);
 
   check('no page errors', pageErrors.length === 0, pageErrors.join(' | '));
   c.close(); proc.kill(); await mock.close();

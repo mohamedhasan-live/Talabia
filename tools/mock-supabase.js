@@ -211,7 +211,30 @@ function startMock({ key, withTable = true, tokenTtl = 3600, withRoles = true, w
           return send(200, r.id);
         }
         if (!fn.startsWith('talabia_admin_')) return send(404, { code: 'PGRST202', message: 'no function' });
-        if (!isAdmin) return err('غير مسموح');
+        // delegated control-panel rights (supabase-roles.sql): a role with admin.users / admin.roles / admin.log, never over the owner,
+        // never over itself, never over an owner-appointed (sensitive) role, never granting anything sensitive, never clearing the log
+        const myPerms = (withRoles && me && me.roleId && roles.get(me.roleId)) ? roles.get(me.roleId).perms || {} : {};
+        const UMB = { usr: 'admin.users', role: 'admin.roles', log: 'admin.log' };
+        const perm = p => isAdmin || myPerms[p] === true || myPerms[UMB[p.split('.')[0]]] === true;
+        const sens = pr => Object.keys(pr || {}).some(k => pr[k] === true && (/^(admin|usr|role|log|data)\./.test(k) || k === 'branches.delete'));
+        const roleSens = id => !!(id && roles.get(id) && sens(roles.get(id).perms));
+        const adm = pr => Object.keys(pr || {}).some(k => pr[k] === true && /^(admin|usr|role|log)\./.test(k));
+        const roleAdm = id => !!(id && roles.get(id) && adm(roles.get(id).perms));
+        const sensKeys = pr => Object.keys(pr || {}).filter(k => pr[k] === true && (/^(admin|usr|role|log|data)\./.test(k) || k === 'branches.delete')).sort().join();
+        const guardTarget = id => { if (isAdmin) return null; const m = members.get(id); if (m && m.role === 'admin') return 'حساب المالك لا يُمَسّ'; if (id === uid) return 'لا تستطيع تعديل حسابك أو صلاحياتك بنفسك'; if (m && roleAdm(m.roleId)) return 'هذا الحساب مديرٌ مفوَّض مثلك — يعدّله المالك وحده'; return null; };
+        if (withRoles && !isAdmin) {
+          const need = { talabia_admin_users: ['usr.view'], talabia_admin_create_member: ['usr.add'], talabia_admin_set_member: ['usr.edit'], talabia_admin_set_active: ['usr.stop'],
+            talabia_admin_set_password: ['usr.pass'], talabia_admin_remove: ['usr.delete'], talabia_admin_roles: ['role.view', 'usr.add', 'usr.edit'],
+            talabia_admin_save_role: [a.p_id && roles.has(a.p_id) ? 'role.edit' : 'role.add'], talabia_admin_delete_role: ['role.delete'], talabia_admin_activity: ['log.view'] }[fn];
+          if (!need || !need.some(perm)) return err('غير مسموح');
+          if (/set_member|set_active|set_password|remove/.test(fn)) { const g = guardTarget(a.p_user); if (g) return err(g); }
+          if (fn === 'talabia_admin_create_member' && roleSens(a.p_role_id)) return err('لا تستطيع منح دورٍ فيه صلاحيات حسّاسة');
+          if (fn === 'talabia_admin_set_member' && roleSens(a.p_role_id) && (members.get(a.p_user) || {}).roleId !== a.p_role_id) return err('لا تستطيع منح دورٍ فيه صلاحيات حسّاسة');
+          if (fn === 'talabia_admin_create_member') { const ex = users.get(String(a.p_email || '').trim().toLowerCase()); if (ex && members.has(ex.id)) { const g = guardTarget(ex.id); if (g) return err(g); } }
+          if (fn === 'talabia_admin_save_role') { if (a.p_id && me.roleId === a.p_id) return err('لا تستطيع تعديل دورك أنت'); if (roleAdm(a.p_id)) return err('هذا دور مديرٍ مفوَّض — يعدّله المالك وحده');
+            if (sensKeys(a.p_perms) !== sensKeys(a.p_id && roles.get(a.p_id) ? roles.get(a.p_id).perms : {})) return err('لا تستطيع منح صلاحيات حسّاسة أو نزعها (البيانات، الصلاحيات الإدارية، حذف الفروع)'); }
+          if (fn === 'talabia_admin_delete_role' && (roleAdm(a.p_id) || me.roleId === a.p_id)) return err('لا تستطيع حذف هذا الدور');
+        } else if (!isAdmin) return err('غير مسموح');
         if (withRoles) {
           const emailOf2 = id => ([...users.entries()].find(([, x]) => x.id === id) || [])[0];
           const owner = id => { const m = members.get(id); return !!(m && m.role === 'admin'); };

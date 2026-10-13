@@ -4,7 +4,9 @@
 -- SQL Editor ← New query ← الصق الملف كاملاً ← (اكتب بريدك في السطر المعلَّم إن طُلب) ← Run.
 --
 -- ما يفعله:
---   - حسابك أنت «المالك»: وحده يدير المستخدمين والأدوار والفروع والتخزين.
+--   - حسابك أنت «المالك»: وحده يدير المستخدمين والأدوار والفروع والتخزين، ويستطيع تفويض
+--     «إدارة المستخدمين» و«إدارة الأدوار» و«عرض السجل» لدورٍ يختاره — دون أن يمسّ المفوَّضُ
+--     حسابَ المالك أو حسابه هو أو صلاحياته، ودون أن يمنح أحداً صلاحيةً حسّاسة أو يمسح السجل.
 --   - أي مدير آخر يصير «مستخدماً» يحتفظ بكل الفروع التي كان يراها، ثم تحدّد له دوره.
 --   - أدوار بأسماء تختارها، لكلٍّ منها صلاحيات (شاشات وإجراءات) تفتحها وتقفلها.
 --   - إيقاف حساب يمنعه فوراً من الدخول ومن البيانات على كل الأجهزة.
@@ -108,6 +110,65 @@ create or replace function private.is_talabia_user() returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists (select 1 from private.talabia_users where user_id = (select auth.uid()) and active);
 $$;
+-- صلاحيات لوحة التحكم المفوّضة، جزءاً جزءاً: المالك يملكها كلّها، وغيره بما في دوره
+--   usr.view عرض المستخدمين · usr.add إضافة · usr.edit تعديل الدور والفروع والاسم · usr.stop إيقاف وتفعيل
+--   usr.pass كلمات المرور · usr.delete حذف · role.view عرض الأدوار · role.add إنشاء دور · role.edit تعديله
+--   role.delete حذفه · log.view عرض السجلّ   (والصلاحيات الجامعة القديمة admin.users / admin.roles / admin.log تشملها)
+create or replace function private.talabia_can_admin(p text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from private.talabia_users t left join private.talabia_roles r on r.id = t.role_id
+                 where t.user_id = (select auth.uid()) and t.active
+                   and (t.is_owner or coalesce(r.perms ->> p, '') = 'true'
+                        or (p like 'usr.%' and coalesce(r.perms ->> 'admin.users', '') = 'true')
+                        or (p like 'role.%' and coalesce(r.perms ->> 'admin.roles', '') = 'true')
+                        or (p like 'log.%' and coalesce(r.perms ->> 'admin.log', '') = 'true')));
+$$;
+-- الحسّاس: الصلاحيات الإدارية نفسها، والبيانات (تصدير واستعادة)، وحذف الفروع — لا يمنحها إلا المالك
+create or replace function private.talabia_perms_sensitive(p jsonb) returns boolean
+language sql immutable set search_path = '' as $$
+  select exists (select 1 from jsonb_each_text(coalesce(p, '{}'::jsonb)) e
+                 where e.value = 'true' and (e.key like 'admin.%' or e.key like 'usr.%' or e.key like 'role.%' or e.key like 'log.%'
+                                             or e.key like 'data.%' or e.key = 'branches.delete'));
+$$;
+-- الصلاحيات الإدارية وحدها (لوحة التحكم): صاحب دورٍ فيه شيءٌ منها نظيرٌ للمفوَّض، لا يمسّه إلا المالك
+create or replace function private.talabia_perms_admin(p jsonb) returns boolean
+language sql immutable set search_path = '' as $$
+  select exists (select 1 from jsonb_each_text(coalesce(p, '{}'::jsonb)) e
+                 where e.value = 'true' and (e.key like 'admin.%' or e.key like 'usr.%' or e.key like 'role.%' or e.key like 'log.%'));
+$$;
+create or replace function private.talabia_role_admin(p_role text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select private.talabia_perms_admin(perms) from private.talabia_roles where id = p_role), false);
+$$;
+-- مفاتيح الصلاحيات الحسّاسة المفعّلة في مجموعة صلاحيات (للمقارنة: المفوَّض لا يضيف منها ولا ينزع)
+create or replace function private.talabia_sens_keys(p jsonb) returns text[]
+language sql immutable set search_path = '' as $$
+  select coalesce(array_agg(e.key order by e.key), '{}') from jsonb_each_text(coalesce(p, '{}'::jsonb)) e
+   where e.value = 'true' and (e.key like 'admin.%' or e.key like 'usr.%' or e.key like 'role.%' or e.key like 'log.%'
+                               or e.key like 'data.%' or e.key = 'branches.delete');
+$$;
+create or replace function private.talabia_role_sensitive(p_role text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select private.talabia_perms_sensitive(perms) from private.talabia_roles where id = p_role), false);
+$$;
+-- من يديره غيرُ المالك: لا المالك، ولا نفسه، ولا صاحب دورٍ حسّاس (من عيّنهم المالك)
+create or replace function private.talabia_guard_target(p_user uuid) returns void
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if private.talabia_is_owner() then return; end if;
+  if exists (select 1 from private.talabia_users where user_id = p_user and is_owner) then raise exception 'حساب المالك لا يُمَسّ'; end if;
+  if p_user = (select auth.uid()) then raise exception 'لا تستطيع تعديل حسابك أو صلاحياتك بنفسك'; end if;
+  if exists (select 1 from private.talabia_users t where t.user_id = p_user and private.talabia_role_admin(t.role_id)) then
+    raise exception 'هذا الحساب مديرٌ مفوَّض مثلك — يعدّله المالك وحده';
+  end if;
+end $$;
+-- لا يُسنَد دورٌ حسّاس إلا من المالك
+create or replace function private.talabia_guard_role(p_role text) returns void
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if private.talabia_is_owner() then return; end if;
+  if p_role is not null and private.talabia_role_sensitive(p_role) then raise exception 'لا تستطيع منح دورٍ فيه صلاحيات حسّاسة'; end if;
+end $$;
 revoke all on function private.talabia_is_owner() from public, anon;
 grant execute on function private.talabia_is_owner() to authenticated;
 
@@ -129,7 +190,7 @@ $$;
 create or replace function public.talabia_admin_users() returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 begin
-  if not private.talabia_is_owner() then raise exception 'غير مسموح: للمالك فقط'; end if;
+  if not private.talabia_can_admin('usr.view') then raise exception 'غير مسموح'; end if;
   return coalesce((
     select jsonb_agg(jsonb_build_object(
              'user_id', t.user_id, 'email', u.email, 'name', t.display_name, 'role', t.role, 'owner', t.is_owner,
@@ -147,7 +208,8 @@ create or replace function public.talabia_admin_create_member(p_email text, p_pa
 returns uuid language plpgsql security definer set search_path = '' as $$
 declare v_id uuid; v_email text := lower(trim(p_email)); v_name text := nullif(left(trim(coalesce(p_name, '')), 60), '');
 begin
-  if not private.talabia_is_owner() then raise exception 'غير مسموح: للمالك فقط'; end if;
+  if not private.talabia_can_admin('usr.add') then raise exception 'غير مسموح'; end if;
+  perform private.talabia_guard_role(p_role_id);
   if exists (select 1 from private.talabia_users where lower(display_name) = lower(v_name)
                and user_id <> coalesce((select id from auth.users where lower(email) = v_email), '00000000-0000-0000-0000-000000000000'::uuid)) then
     raise exception 'يوجد مستخدم بنفس الاسم';
@@ -160,6 +222,7 @@ begin
   if v_id is not null and exists (select 1 from private.talabia_users where user_id = v_id and is_owner) then
     raise exception 'هذا حساب المالك';
   end if;
+  if v_id is not null and exists (select 1 from private.talabia_users where user_id = v_id) then perform private.talabia_guard_target(v_id); end if;
   if v_id is null then
     if p_password is null or char_length(p_password) < 8 then raise exception 'كلمة المرور 8 أحرف على الأقل'; end if;
     v_id := gen_random_uuid();
@@ -185,9 +248,13 @@ create or replace function public.talabia_admin_set_member(p_user uuid, p_role_i
 language plpgsql security definer set search_path = '' as $$
 declare v_name text := nullif(left(trim(coalesce(p_name, '')), 60), '');
 begin
-  if not private.talabia_is_owner() then raise exception 'غير مسموح: للمالك فقط'; end if;
+  if not private.talabia_can_admin('usr.edit') then raise exception 'غير مسموح'; end if;
   if exists (select 1 from private.talabia_users where user_id = p_user and is_owner) then
     raise exception 'حساب المالك لا يُقيَّد';
+  end if;
+  perform private.talabia_guard_target(p_user);
+  if p_role_id is distinct from (select role_id from private.talabia_users where user_id = p_user) then
+    perform private.talabia_guard_role(p_role_id);
   end if;
   if p_role_id is not null and not exists (select 1 from private.talabia_roles where id = p_role_id) then
     raise exception 'الدور غير موجود';
@@ -204,7 +271,8 @@ end $$;
 create or replace function public.talabia_admin_set_active(p_user uuid, p_active boolean) returns void
 language plpgsql security definer set search_path = '' as $$
 begin
-  if not private.talabia_is_owner() then raise exception 'غير مسموح: للمالك فقط'; end if;
+  if not private.talabia_can_admin('usr.stop') then raise exception 'غير مسموح'; end if;
+  perform private.talabia_guard_target(p_user);
   if exists (select 1 from private.talabia_users where user_id = p_user and is_owner) then
     raise exception 'حساب المالك لا يُوقَف';
   end if;
@@ -226,19 +294,22 @@ end $$;
 create or replace function public.talabia_admin_create_user(p_email text, p_password text, p_role text, p_branches text[])
 returns uuid language plpgsql security definer set search_path = '' as $$
 begin
+  if not private.talabia_is_owner() then raise exception 'غير مسموح: للمالك فقط'; end if;
   return public.talabia_admin_create_member(p_email, p_password, null, p_branches, null);
 end $$;
 create or replace function public.talabia_admin_set_access(p_user uuid, p_role text, p_branches text[]) returns void
 language plpgsql security definer set search_path = '' as $$
 declare v_role_id text;
 begin
+  if not private.talabia_is_owner() then raise exception 'غير مسموح: للمالك فقط'; end if;
   select role_id into v_role_id from private.talabia_users where user_id = p_user;
   perform public.talabia_admin_set_member(p_user, v_role_id, p_branches, null);
 end $$;
 create or replace function public.talabia_admin_set_password(p_user uuid, p_password text) returns void
 language plpgsql security definer set search_path = '' as $$
 begin
-  if not private.talabia_is_owner() then raise exception 'غير مسموح: للمالك فقط'; end if;
+  if not private.talabia_can_admin('usr.pass') then raise exception 'غير مسموح'; end if;
+  perform private.talabia_guard_target(p_user);
   if p_password is null or char_length(p_password) < 8 then raise exception 'كلمة المرور 8 أحرف على الأقل'; end if;
   if not exists (select 1 from private.talabia_users where user_id = p_user) then raise exception 'المستخدم غير موجود'; end if;
   update auth.users set encrypted_password = extensions.crypt(p_password, extensions.gen_salt('bf')), updated_at = now()
@@ -247,7 +318,8 @@ end $$;
 create or replace function public.talabia_admin_remove(p_user uuid, p_delete_account boolean) returns void
 language plpgsql security definer set search_path = '' as $$
 begin
-  if not private.talabia_is_owner() then raise exception 'غير مسموح: للمالك فقط'; end if;
+  if not private.talabia_can_admin('usr.delete') then raise exception 'غير مسموح'; end if;
+  perform private.talabia_guard_target(p_user);
   if exists (select 1 from private.talabia_users where user_id = p_user and is_owner) then
     raise exception 'حساب المالك لا يُحذف';
   end if;
@@ -259,7 +331,7 @@ end $$;
 create or replace function public.talabia_admin_roles() returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 begin
-  if not private.talabia_is_owner() then raise exception 'غير مسموح: للمالك فقط'; end if;
+  if not (private.talabia_can_admin('role.view') or private.talabia_can_admin('usr.add') or private.talabia_can_admin('usr.edit')) then raise exception 'غير مسموح'; end if;
   return coalesce((
     select jsonb_agg(jsonb_build_object('id', r.id, 'name', r.name, 'perms', r.perms,
              'users', (select count(*) from private.talabia_users t where t.role_id = r.id)) order by r.name)
@@ -270,7 +342,15 @@ create or replace function public.talabia_admin_save_role(p_id text, p_name text
 language plpgsql security definer set search_path = '' as $$
 declare v_id text := coalesce(nullif(p_id, ''), 'r-' || substr(md5(random()::text || clock_timestamp()::text), 1, 10));
 begin
-  if not private.talabia_is_owner() then raise exception 'غير مسموح: للمالك فقط'; end if;
+  if not private.talabia_can_admin(case when exists (select 1 from private.talabia_roles where id = v_id) then 'role.edit' else 'role.add' end) then raise exception 'غير مسموح'; end if;
+  if not private.talabia_is_owner() then
+    -- الحسّاس يبقى كما وضعه المالك: لا يُضاف ولا يُنزع (ولدورٍ جديد: لا شيء منه)
+    if private.talabia_sens_keys(p_perms) <> private.talabia_sens_keys((select perms from private.talabia_roles where id = v_id)) then
+      raise exception 'لا تستطيع منح صلاحيات حسّاسة أو نزعها (البيانات، الصلاحيات الإدارية، حذف الفروع)';
+    end if;
+    if exists (select 1 from private.talabia_users where user_id = (select auth.uid()) and role_id = v_id) then raise exception 'لا تستطيع تعديل دورك أنت'; end if;
+    if private.talabia_role_admin(v_id) then raise exception 'هذا دور مديرٍ مفوَّض — يعدّله المالك وحده'; end if;
+  end if;
   if p_name is null or char_length(trim(p_name)) = 0 then raise exception 'اكتب اسم الدور'; end if;
   if jsonb_typeof(coalesce(p_perms, '{}'::jsonb)) <> 'object' then raise exception 'صلاحيات غير صالحة'; end if;
   if exists (select 1 from private.talabia_roles where lower(name) = lower(trim(p_name)) and id <> v_id) then
@@ -285,7 +365,11 @@ create or replace function public.talabia_admin_delete_role(p_id text) returns v
 language plpgsql security definer set search_path = '' as $$
 declare v_n int;
 begin
-  if not private.talabia_is_owner() then raise exception 'غير مسموح: للمالك فقط'; end if;
+  if not private.talabia_can_admin('role.delete') then raise exception 'غير مسموح'; end if;
+  if not private.talabia_is_owner() and (private.talabia_role_admin(p_id)
+     or exists (select 1 from private.talabia_users where user_id = (select auth.uid()) and role_id = p_id)) then
+    raise exception 'لا تستطيع حذف هذا الدور';
+  end if;
   select count(*) into v_n from private.talabia_users where role_id = p_id;
   if v_n > 0 then raise exception 'هذا الدور لـ % مستخدم — انقلهم لدور آخر أولاً', v_n; end if;
   delete from private.talabia_roles where id = p_id;
@@ -316,7 +400,7 @@ end $$;
 create or replace function public.talabia_admin_activity(p_limit integer, p_email text) returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 begin
-  if not private.talabia_is_owner() then raise exception 'غير مسموح: للمالك فقط'; end if;
+  if not private.talabia_can_admin('log.view') then raise exception 'غير مسموح'; end if;
   return coalesce((
     select jsonb_agg(jsonb_build_object('at', a.at, 'email', a.email, 'branch', a.branch_id,
                                         'action', a.action, 'detail', a.detail) order by a.at desc)

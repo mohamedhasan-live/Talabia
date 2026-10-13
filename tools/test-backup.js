@@ -87,6 +87,7 @@ const toastText = c => c.ev('document.getElementById("toast").firstElementChild.
 
   console.log('--- the owner signs in ---');
   await waitFor(c, 'window.S && S.ready && S.branchId', 'the app to start', 90000);
+  await c.ev('try{localStorage.setItem("talabia.nativeConfirm","1")}catch(e){} 1');   // checks answer the system box
   await waitFor(c, '!document.getElementById("gate").hidden && !document.getElementById("gateForm").hidden', 'the sign-in screen');
   await c.ev('document.getElementById("gateEmail").value="owner@shop.sa";document.getElementById("gatePass").value="S3cure-pass";document.getElementById("gateBtn").click()');
   await waitFor(c, 'S.cloud && S.cloud.status==="ok" && document.getElementById("gate").hidden && S.branchId==="caneles-1" && S.products.length===6', 'the owner in CANELÉS');
